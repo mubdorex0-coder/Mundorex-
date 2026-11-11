@@ -95,7 +95,6 @@ function scheduleVisitWrite() {
   if (visitTimer.unref) visitTimer.unref();
 }
 loadVisits();
-const formatVisits = (n) => String(Math.max(0, Math.floor(Number(n) || 0))).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 const isBotUa = (ua) => /bot|crawler|spider/i.test(String(ua || ''));
 function noteVisit(req) {
   if (isBotUa(req.headers['user-agent'])) return false;
@@ -625,7 +624,6 @@ function renderPublic(c) {
   <div class="hero-cta"><a class="btn btn-wa btn-lg" href="${esc(waLink(wa, g.whatsappMessage))}"${wa ? EXT : ''}>${svgIcon(SOCIAL_ICONS.whatsapp.svg)} ${esc(g.heroCta || 'Escríbenos por WhatsApp')}</a>
   <a class="btn btn-ghost btn-lg" href="#servicios">Ver servicios</a>
   <nav class="hero-pills" aria-label="Secciones del inicio"><a href="#inicio">Inicio</a>${lodgingNav}<a href="#catalogo">Catálogo</a><a href="#paquetes">Paquetes</a><a href="#promociones">Promociones</a><a href="#comentarios">Comentarios</a><a href="#redes">Redes sociales</a></nav></div>
-  <p class="visit-pill">👀 ${formatVisits(visitCount)} visitas</p>
 </div><svg class="hero-mtn" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 120V70l120-30 140 45 170-70 160 60 130-40 200 55 160-75 180 70 180-35v100z"/></svg></section>
 
 <section class="section" id="comentarios"><div class="wrap">
