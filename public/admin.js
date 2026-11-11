@@ -4,6 +4,8 @@
   var CSRF = document.querySelector('meta[name="csrf"]').content;
   var app = document.getElementById('app');
   var state = null, icons = {}, iconSvg = {}, dirty = false, tab = location.hash.slice(1) || 'general';
+  var visits = Number(app.dataset.visits || 0);
+  function formatVisits(n) { return String(Math.max(0, Math.floor(Number(n) || 0))).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
 
   function h(tag, attrs) {
     var el = document.createElement(tag);
@@ -229,14 +231,17 @@
         wrap.appendChild(mcard);
         var bcard = h('section', { class: 'pcard' }, h('div', { class: 'pcard-head' }, h('h3', { text: 'Bancos aceptados' })),
           h('div', { class: 'grid2' }, field('Título de la lista', s, 'banksTitle'), field('Nota (opcional)', s, 'banksNote', { wide: true })),
-          h('p', { class: 'muted', text: 'Enciende un banco para mostrarlo en la página; apágalo para ocultarlo.' }));
+          h('p', { class: 'muted', text: 'Enciende un banco para mostrarlo en la página; apágalo para ocultarlo. Si escribes un número de cuenta, en la página se puede pulsar ese banco para verlo y copiarlo.' }));
         p.banks.forEach(function (b, i) {
+          if (b.accountNumber == null) b.accountNumber = '';
           var name = h('input', { type: 'text', maxlength: 60, value: b.name, 'aria-label': 'Nombre del banco' });
           name.addEventListener('input', function () { b.name = name.value; markDirty(); });
-          bcard.appendChild(h('div', { class: 'bank-row' }, toggle('', b, 'active'), name, moveBtns(p.banks, i, draw),
+          var acct = h('input', { type: 'text', maxlength: 40, inputmode: 'numeric', value: b.accountNumber || '', placeholder: 'N.º de cuenta (opcional)', 'aria-label': 'Número de cuenta de ' + (b.name || 'banco') });
+          acct.addEventListener('input', function () { b.accountNumber = acct.value; markDirty(); });
+          bcard.appendChild(h('div', { class: 'bank-row' }, toggle('', b, 'active'), name, acct, moveBtns(p.banks, i, draw),
             h('button', { type: 'button', class: 'btn small danger', text: 'Quitar', onclick: function () { if (confirm('¿Quitar "' + b.name + '" de la lista?')) { p.banks.splice(i, 1); markDirty(); draw(); } } })));
         });
-        bcard.appendChild(h('button', { type: 'button', class: 'btn', text: '+ Agregar banco', onclick: function () { p.banks.push({ name: 'Nuevo banco', active: true }); markDirty(); draw(); } }));
+        bcard.appendChild(h('button', { type: 'button', class: 'btn', text: '+ Agregar banco', onclick: function () { p.banks.push({ name: 'Nuevo banco', active: true, accountNumber: '' }); markDirty(); draw(); } }));
         wrap.appendChild(bcard);
       }
       draw(); return [wrap];
@@ -309,7 +314,7 @@
       return h('a', { href: '#' + t[0], class: tab === t[0] ? 'on' : '', onclick: function (e) { e.preventDefault(); tab = t[0]; history.replaceState(null, '', '#' + t[0]); render(); window.scrollTo(0, 0); } }, h('span', { text: t[2] }), t[1]);
     }));
     var top = h('header', { class: 'top' },
-      h('div', { class: 'top-brand' }, h('span', { class: 'logo', text: '⛰' }), h('div', {}, h('strong', { text: 'Panel de administración' }), h('small', { text: 'Sesión: ' + app.dataset.user }))),
+      h('div', { class: 'top-brand' }, h('span', { class: 'logo', text: '⛰' }), h('div', {}, h('strong', { text: 'Panel de administración' }), h('small', { text: 'Sesión: ' + app.dataset.user + ' · 👀 ' + formatVisits(visits) + ' visitas' }))),
       h('div', { class: 'top-actions' }, h('a', { class: 'btn small ghost', href: '/', target: '_blank', rel: 'noopener', text: 'Ver página ↗' }),
         h('button', { type: 'button', class: 'btn small ghost', text: 'Cerrar sesión', onclick: function () { if (!dirty || confirm('Tienes cambios sin guardar. ¿Salir igual?')) { dirty = false; document.getElementById('logout').submit(); } } })));
     var title = TABS.filter(function (t) { return t[0] === tab; })[0] || TABS[0];
@@ -320,6 +325,6 @@
     window.scrollTo(0, y);
   }
   window.addEventListener('beforeunload', function (e) { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
-  api('/admin/api/content').then(function (j) { state = j.content; icons = j.icons; iconSvg = j.iconSvg; render(); })
+  api('/admin/api/content').then(function (j) { state = j.content; icons = j.icons; iconSvg = j.iconSvg; if (typeof j.visits === 'number') visits = j.visits; render(); })
     .catch(function (e) { app.textContent = e.message; });
 })();

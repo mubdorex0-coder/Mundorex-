@@ -99,10 +99,10 @@
       { "icon": "qr", "name": "Deuna", "note": "Paga desde tu celular." }
     ],
     "banks": [
-      { "name": "Banco Pacífico", "active": true },
-      { "name": "Banco Pichincha", "active": true },
-      { "name": "Banco del Austro", "active": true },
-      { "name": "Produbanco", "active": true }
+      { "name": "Banco Pacífico", "active": true, "accountNumber": "" },
+      { "name": "Banco Pichincha", "active": true, "accountNumber": "2213461121" },
+      { "name": "Banco del Austro", "active": true, "accountNumber": "" },
+      { "name": "Produbanco", "active": true, "accountNumber": "" }
     ]
   },
   "social": {

@@ -19,8 +19,6 @@ const SESSION_MS = 12 * 60 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
 const LOCK_MS = 15 * 60 * 1000;
 const MAX_UPLOAD = 5 * 1024 * 1024;
-const SETUP_CODE_FILE = path.join(ROOT, 'setup-code.txt');
-const ENV_SETUP_CODE = String(process.env.SETUP_CODE || '').trim();
 const SECURE_COOKIE = process.env.COOKIE_SECURE === '1';
 const TRUST_PROXY = process.env.TRUST_PROXY === '1';
 
@@ -41,23 +39,6 @@ function writeJsonAtomic(file, data) {
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2), { mode: 0o600 });
   fs.renameSync(tmp, file);
 }
-/* código de instalación de un solo uso (para crear la cuenta del dueño) */
-let setupCode = null;
-function ensureSetupCode() {
-  if (authExists()) return null;
-  if (ENV_SETUP_CODE) return ENV_SETUP_CODE;
-  if (setupCode) return setupCode;
-  if (fs.existsSync(SETUP_CODE_FILE)) {
-    const c = fs.readFileSync(SETUP_CODE_FILE, 'utf8').trim().toUpperCase();
-    if (/^[A-Z2-7]{8,32}$/.test(c)) { setupCode = c; console.log(`Código de instalación (en setup-code.txt): ${c}`); return c; }
-  }
-  const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; const b = crypto.randomBytes(8);
-  setupCode = Array.from(b, (x) => A[x & 31]).join('');
-  fs.writeFileSync(SETUP_CODE_FILE, setupCode + '\n', { mode: 0o600 }); fs.chmodSync(SETUP_CODE_FILE, 0o600);
-  console.log(`\n*** Código de instalación para crear la cuenta del dueño: ${setupCode} ***\n    (también guardado en ${SETUP_CODE_FILE})\n`);
-  return setupCode;
-}
-function consumeSetupCode() { setupCode = null; try { fs.unlinkSync(SETUP_CODE_FILE); } catch {} }
 const readContent = () => JSON.parse(fs.readFileSync(CONTENT_FILE, 'utf8'));
 const authExists = () => fs.existsSync(AUTH_FILE);
 const readAuth = () => JSON.parse(fs.readFileSync(AUTH_FILE, 'utf8'));
@@ -80,6 +61,44 @@ function cookie(req, name, value, maxAgeSec) {
   if (isHttps(req)) c += '; Secure';
   return c;
 }
+
+/* ---------- visitas ---------- */
+const VISITS_FILE = path.join(ROOT, 'visits.json');
+let visitCount = 0;
+let visitTimer = null;
+let visitDirty = false;
+function loadVisits() {
+  try {
+    const n = Number(JSON.parse(fs.readFileSync(VISITS_FILE, 'utf8')).count);
+    visitCount = Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
+  } catch { visitCount = 0; }
+}
+function flushVisits() {
+  if (visitTimer) { clearTimeout(visitTimer); visitTimer = null; }
+  if (!visitDirty) return;
+  visitDirty = false;
+  try { writeJsonAtomic(VISITS_FILE, { count: visitCount }); }
+  catch (e) { console.error(e); visitDirty = true; }
+}
+function scheduleVisitWrite() {
+  visitDirty = true;
+  if (visitTimer) return;
+  visitTimer = setTimeout(flushVisits, 1500);
+  if (visitTimer.unref) visitTimer.unref();
+}
+loadVisits();
+const formatVisits = (n) => String(Math.max(0, Math.floor(Number(n) || 0))).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+const isBotUa = (ua) => /bot|crawler|spider/i.test(String(ua || ''));
+function noteVisit(req) {
+  if (isBotUa(req.headers['user-agent'])) return false;
+  if (parseCookies(req).vst) return false;
+  visitCount += 1;
+  scheduleVisitWrite();
+  return true;
+}
+process.on('SIGTERM', () => { flushVisits(); process.exit(0); });
+process.on('SIGINT', () => { flushVisits(); process.exit(0); });
+
 const BASE_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -226,7 +245,7 @@ function sanitizeContent(c, errors) {
   }).filter((pr) => pr.name);
   out.testimonials = arr(c.testimonials, 20).map((t) => ({ name: str(t && t.name, 80), place: str(t && t.place, 80), text: str(t && t.text, 500), example: bool(t && t.example) })).filter((t) => t.text);
   out.payments.methods = arr(p.methods, 20).map((m) => ({ icon: ICONS[m && m.icon] ? m.icon : 'check', name: str(m && m.name, 60), note: str(m && m.note, 200) })).filter((m) => m.name);
-  out.payments.banks = arr(p.banks, 30).map((b) => ({ name: str(b && b.name, 60), active: bool(b && b.active) })).filter((b) => b.name);
+  out.payments.banks = arr(p.banks, 30).map((b) => ({ name: str(b && b.name, 60), active: bool(b && b.active), accountNumber: str(b && b.accountNumber, 40).replace(/\D/g, '') })).filter((b) => b.name);
   Object.keys(SOCIAL_ICONS).forEach((k) => {
     let v = str(so[k], 500);
     if (k === 'whatsapp' && v && /^[+\d\s()-]+$/.test(v)) v = digits(v) ? 'https://wa.me/' + digits(v) : '';
@@ -273,9 +292,15 @@ function renderPublic(c) {
     </article>`;
   }).join('');
   const banks = c.payments.banks.filter((b) => b.active);
+  const bankHtml = banks.map((b, i) => {
+    const num = String(b.accountNumber || '').trim();
+    if (!num) return `<li>${svgIcon(ICONS.transfer.svg)}${esc(b.name)}</li>`;
+    const id = `bank-acct-${i}`;
+    return `<li class="bank-has"><button type="button" class="bank-toggle" aria-expanded="false" aria-controls="${id}">${svgIcon(ICONS.transfer.svg)}<span>${esc(b.name)}</span></button><div class="bank-acct" id="${id}" hidden><span class="bank-num">${esc(num)}</span><button type="button" class="bank-copy" data-copy="${esc(num)}">Copiar</button></div></li>`;
+  }).join('');
   const socials = Object.keys(SOCIAL_ICONS).filter((k) => c.social[k])
     .map((k) => `<a class="social" href="${esc(c.social[k])}"${EXT} aria-label="${SOCIAL_ICONS[k].label}" title="${SOCIAL_ICONS[k].label}">${svgIcon(SOCIAL_ICONS[k].svg)}</a>`).join('');
-  const heroStyle = g.heroImage ? ` style="--hero-img:url('${esc(g.heroImage)}')"` : '';
+  const heroUrl = g.heroImage || '/img/cascada-noche-2.jpg';
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(pageTitle)}</title>
@@ -291,12 +316,13 @@ function renderPublic(c) {
   <a class="btn btn-login btn-sm" href="/admin">Iniciar sesión</a></nav>
 </div></header>
 <main id="inicio">
-<section class="hero ${g.heroImage ? 'has-img' : ''}"${heroStyle}><div class="wrap hero-in">
+<section class="hero" style="--hero-img:url('${esc(heroUrl)}')"><div class="wrap hero-in">
   ${g.heroEyebrow ? `<p class="eyebrow">${esc(g.heroEyebrow)}</p>` : ''}
   <h1>${esc(g.heroTitle)}</h1>
   <p class="lead">${esc(g.heroSubtitle)}</p>
   <div class="hero-cta"><a class="btn btn-wa btn-lg" href="${esc(waLink(wa, g.whatsappMessage))}"${wa ? EXT : ''}>${svgIcon(SOCIAL_ICONS.whatsapp.svg)} ${esc(g.heroCta || 'Escríbenos por WhatsApp')}</a>
   <a class="btn btn-ghost btn-lg" href="#servicios">Ver servicios</a></div>
+  <p class="visit-pill">👀 ${formatVisits(visitCount)} visitas</p>
 </div><svg class="hero-mtn" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 120V70l120-30 140 45 170-70 160 60 130-40 200 55 160-75 180 70 180-35v100z"/></svg></section>
 
 <section class="section" id="servicios"><div class="wrap">
@@ -322,7 +348,7 @@ ${c.testimonials.length ? `<section class="section alt" id="testimonios"><div cl
 ${c.payments.visible ? `<section class="section" id="pagos"><div class="wrap">
   <div class="sec-head"><h2>${esc(s.paymentsTitle)}</h2><p>${esc(s.paymentsSubtitle)}</p></div>
   <div class="grid g5">${c.payments.methods.map((m) => `<div class="card pay">${svgIcon((ICONS[m.icon] || ICONS.check).svg, 'pay-ico')}<h3>${esc(m.name)}</h3>${m.note ? `<p>${esc(m.note)}</p>` : ''}</div>`).join('')}</div>
-  ${banks.length ? `<div class="banks"><h3>${esc(s.banksTitle || 'Bancos aceptados')}</h3><ul>${banks.map((b) => `<li>${svgIcon(ICONS.transfer.svg)}${esc(b.name)}</li>`).join('')}</ul>${s.banksNote ? `<p class="note">${esc(s.banksNote)}</p>` : ''}</div>` : ''}
+  ${banks.length ? `<div class="banks"><h3>${esc(s.banksTitle || 'Bancos aceptados')}</h3><ul>${bankHtml}</ul>${s.banksNote ? `<p class="note">${esc(s.banksNote)}</p>` : ''}</div>` : ''}
 </div></section>` : ''}
 
 <section class="final-cta"><div class="wrap">
@@ -341,6 +367,7 @@ ${c.payments.visible ? `<section class="section" id="pagos"><div class="wrap">
   <div><h4>Enlaces</h4><ul class="contact"><li><a href="#servicios">Servicios</a></li><li><a href="#productos">Productos</a></li>${c.payments.visible ? '<li><a href="#pagos">Métodos de pago</a></li>' : ''}<li><a class="foot-login" href="/admin">Iniciar sesión</a></li></ul></div>
 </div><div class="wrap copy">© ${new Date().getFullYear()} ${esc(g.businessName)}. Todos los derechos reservados.</div></footer>
 ${wa ? `<a class="wa-float" href="${esc(waLink(wa, g.whatsappMessage))}"${EXT} aria-label="Escríbenos por WhatsApp">${svgIcon(SOCIAL_ICONS.whatsapp.svg)}<span>WhatsApp</span></a>` : ''}
+${banks.some((b) => b.accountNumber) ? '<script src="/site.js" defer></script>' : ''}
 </body></html>`;
 }
 
@@ -348,6 +375,20 @@ ${wa ? `<a class="wa-float" href="${esc(waLink(wa, g.whatsappMessage))}"${EXT} a
 function adminShell(title, body, extraHead) {
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex"><title>${esc(title)}</title><link rel="stylesheet" href="/admin.css">${extraHead || ''}</head><body>${body}</body></html>`;
+}
+const OAUTH_ICONS = {
+  google: '<svg class="oauth-ico" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 8 3.1l5.7-5.7C34.2 6.1 29.4 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 12 24 12c3.1 0 5.8 1.2 8 3.1l5.7-5.7C34.2 6.1 29.4 4 24 4 16.3 4 9.6 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 10-2 13.6-5.2l-6.3-5.3C29.2 35.1 26.7 36 24 36c-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1.1 3.2-3.5 5.7-6.7 7.1l6.3 5.3C37.4 38.4 44 33 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>',
+  facebook: '<svg class="oauth-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M14 9h3V6h-3c-2.2 0-4 1.8-4 4v2H8v3h2v7h3v-7h2.6l.4-3H13v-2c0-.6.4-1 1-1z"/></svg>',
+  x: '<svg class="oauth-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.5 3h3.1l-6.8 7.8L22 21h-6.2l-4.8-6.3L5.7 21H2.6l7.3-8.4L2 3h6.3l4.4 5.8L17.5 3zm-1.1 16.2h1.7L7.7 4.7H5.9l10.5 14.5z"/></svg>',
+};
+function oauthLoginHtml() {
+  const rows = [
+    ['google', 'Google', process.env.GOOGLE_CLIENT_ID],
+    ['facebook', 'Facebook', process.env.FACEBOOK_APP_ID],
+    ['x', 'X', process.env.X_CLIENT_ID],
+  ].filter((r) => String(r[2] || '').trim());
+  if (!rows.length) return '';
+  return `<div class="oauth-box"><p class="muted small">O entra con</p>${rows.map(([id, label]) => `<a class="btn oauth ${id} block" href="/auth/${id}">${OAUTH_ICONS[id]} Continuar con ${label}</a>`).join('')}</div>`;
 }
 function authPage(kind, csrf, msg, ok) {
   const setup = kind === 'setup';
@@ -357,18 +398,18 @@ function authPage(kind, csrf, msg, ok) {
   <p class="muted">${setup ? 'Es la primera vez que entras. Crea tu usuario y contraseña: solo tú podrás entrar a editar la página.' : 'Ingresa con tu usuario y contraseña.'}</p>
   ${msg ? `<div class="alert ${ok ? 'ok' : 'err'}">${esc(msg)}</div>` : ''}
   <input type="hidden" name="csrf" value="${esc(csrf)}">
-  ${setup ? '<label><span>Código de instalación <small>(está en el archivo setup-code.txt del servidor o en la consola donde lo iniciaste)</small></span><input name="setupCode" required maxlength="40" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false"></label>' : ''}
   <label>Usuario<input name="username" required minlength="3" maxlength="40" autocomplete="username" autocapitalize="none"></label>
   <label><span>Contraseña${setup ? ' <small>(mínimo 8 caracteres)</small>' : ''}</span><input name="password" type="password" required ${setup ? 'minlength="8"' : ''} autocomplete="${setup ? 'new-password' : 'current-password'}"></label>
   ${setup ? '<label>Confirmar contraseña<input name="confirm" type="password" required minlength="8" autocomplete="new-password"></label>' : ''}
   <button class="btn primary block" type="submit">${setup ? 'Crear cuenta y entrar' : 'Entrar'}</button>
+  ${setup ? '' : oauthLoginHtml()}
   <p class="muted small"><a href="/">← Volver a la página</a></p>
 </form></main>`;
   return adminShell(setup ? 'Crear cuenta de dueño' : 'Iniciar sesión', body);
 }
 function panelPage(sess) {
   const a = readAuth();
-  return adminShell('Panel de administración', `<div id="app" data-user="${esc(a.username)}"><p class="loading">Cargando panel…</p></div>
+  return adminShell('Panel de administración', `<div id="app" data-user="${esc(a.username)}" data-visits="${visitCount}"><p class="loading">Cargando panel…</p></div>
 <form id="logout" method="post" action="/admin/logout" hidden><input type="hidden" name="csrf" value="${esc(sess.csrf)}"></form>
 <script src="/admin.js" defer></script>`, `<meta name="csrf" content="${esc(sess.csrf)}">`);
 }
@@ -411,6 +452,132 @@ function cleanupUploads(keep) {
   });
 }
 
+/* ---------- inicio de sesión social (OAuth 2.0) ---------- */
+const PUBLIC_URL = String(process.env.PUBLIC_URL || 'https://mundorex.onrender.com').replace(/\/+$/, '');
+const OWNER_EMAIL = String(process.env.OWNER_EMAIL || 'mariobropvp0@gmail.com').trim().toLowerCase();
+const oauthRedirect = (provider) => `${PUBLIC_URL}/auth/${provider}/callback`;
+function oauthClient(provider) {
+  if (provider === 'google') return { id: String(process.env.GOOGLE_CLIENT_ID || '').trim(), secret: String(process.env.GOOGLE_CLIENT_SECRET || '').trim() };
+  if (provider === 'facebook') return { id: String(process.env.FACEBOOK_APP_ID || '').trim(), secret: String(process.env.FACEBOOK_APP_SECRET || '').trim() };
+  if (provider === 'x') return { id: String(process.env.X_CLIENT_ID || '').trim(), secret: String(process.env.X_CLIENT_SECRET || '').trim() };
+  return { id: '', secret: '' };
+}
+function oauthCookie(req, value, maxAgeSec) {
+  let c = `oauth=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax`;
+  if (maxAgeSec !== undefined) c += `; Max-Age=${maxAgeSec}`;
+  if (isHttps(req)) c += '; Secure';
+  return c;
+}
+function readOauthCookie(raw) {
+  if (!raw) return null;
+  try {
+    const o = JSON.parse(Buffer.from(String(raw), 'base64url').toString('utf8'));
+    if (!o || !o.p || !o.s || !o.t || Date.now() - Number(o.t) > 10 * 60 * 1000) return null;
+    return o;
+  } catch { return null; }
+}
+function makePkce() {
+  const verifier = crypto.randomBytes(32).toString('base64url');
+  const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+  return { verifier, challenge };
+}
+function oauthAuthorizeUrl(provider, state, challenge) {
+  const cfg = oauthClient(provider);
+  const redirectUri = oauthRedirect(provider);
+  if (provider === 'google') {
+    const u = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    u.searchParams.set('client_id', cfg.id);
+    u.searchParams.set('redirect_uri', redirectUri);
+    u.searchParams.set('response_type', 'code');
+    u.searchParams.set('scope', 'openid email profile');
+    u.searchParams.set('state', state);
+    u.searchParams.set('prompt', 'select_account');
+    return u.href;
+  }
+  if (provider === 'facebook') {
+    const u = new URL('https://www.facebook.com/v27.0/dialog/oauth');
+    u.searchParams.set('client_id', cfg.id);
+    u.searchParams.set('redirect_uri', redirectUri);
+    u.searchParams.set('response_type', 'code');
+    u.searchParams.set('scope', 'email');
+    u.searchParams.set('state', state);
+    return u.href;
+  }
+  const u = new URL('https://twitter.com/i/oauth2/authorize');
+  u.searchParams.set('response_type', 'code');
+  u.searchParams.set('client_id', cfg.id);
+  u.searchParams.set('redirect_uri', redirectUri);
+  u.searchParams.set('scope', 'users.read tweet.read');
+  u.searchParams.set('state', state);
+  u.searchParams.set('code_challenge', challenge);
+  u.searchParams.set('code_challenge_method', 'S256');
+  return u.href;
+}
+async function fetchJson(url, opts) {
+  const res = await fetch(url, Object.assign({ signal: AbortSignal.timeout(12000) }, opts || {}));
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = null; }
+  if (!res.ok || !data) throw new Error('oauth_http_' + res.status);
+  return data;
+}
+async function postForm(url, body, headers) {
+  return fetchJson(url, {
+    method: 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' }, headers || {}),
+    body: new URLSearchParams(body).toString(),
+  });
+}
+async function ownerFromProvider(provider, code, verifier) {
+  const cfg = oauthClient(provider);
+  if (!cfg.id || !cfg.secret) throw new Error('oauth_secret');
+  const redirectUri = oauthRedirect(provider);
+  if (provider === 'google') {
+    const tok = await postForm('https://oauth2.googleapis.com/token', {
+      code, client_id: cfg.id, client_secret: cfg.secret, redirect_uri: redirectUri, grant_type: 'authorization_code',
+    });
+    const info = await fetchJson('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + tok.access_token } });
+    const email = String(info.email || '').trim().toLowerCase();
+    const verified = info.email_verified === true || info.email_verified === 'true';
+    return verified && email === OWNER_EMAIL;
+  }
+  if (provider === 'facebook') {
+    const tokenUrl = new URL('https://graph.facebook.com/v27.0/oauth/access_token');
+    tokenUrl.searchParams.set('client_id', cfg.id);
+    tokenUrl.searchParams.set('client_secret', cfg.secret);
+    tokenUrl.searchParams.set('redirect_uri', redirectUri);
+    tokenUrl.searchParams.set('code', code);
+    const tok = await fetchJson(tokenUrl);
+    const meUrl = new URL('https://graph.facebook.com/v27.0/me');
+    meUrl.searchParams.set('fields', 'id,email');
+    meUrl.searchParams.set('access_token', tok.access_token);
+    const me = await fetchJson(meUrl);
+    return String(me.email || '').trim().toLowerCase() === OWNER_EMAIL;
+  }
+  const basic = Buffer.from(`${cfg.id}:${cfg.secret}`).toString('base64');
+  const tok = await postForm('https://api.twitter.com/2/oauth2/token', {
+    grant_type: 'authorization_code', code, redirect_uri: redirectUri, code_verifier: verifier, client_id: cfg.id,
+  }, { Authorization: 'Basic ' + basic });
+  const me = await fetchJson('https://api.twitter.com/2/users/me', { headers: { Authorization: 'Bearer ' + tok.access_token } });
+  const username = String(me.data && me.data.username || '').trim().replace(/^@/, '').toLowerCase();
+  const want = String(process.env.OWNER_X_USERNAME || '').trim().replace(/^@/, '').toLowerCase();
+  return !!want && username === want;
+}
+async function handleOAuthCallback(req, res, urlObj, provider) {
+  const clear = oauthCookie(req, '', 0);
+  if (urlObj.searchParams.get('error')) return redirect(res, '/admin?m=oauth', { 'Set-Cookie': clear });
+  const code = String(urlObj.searchParams.get('code') || '');
+  const state = String(urlObj.searchParams.get('state') || '');
+  const saved = readOauthCookie(parseCookies(req).oauth);
+  if (!code || !saved || saved.p !== provider || !safeEqual(saved.s, state)) return redirect(res, '/admin?m=state', { 'Set-Cookie': clear });
+  if (!authExists()) return redirect(res, '/admin?m=noaccount', { 'Set-Cookie': clear });
+  let allowed = false;
+  try { allowed = await ownerFromProvider(provider, code, saved.v || ''); }
+  catch (e) { console.error('oauth', provider, e && e.message); return redirect(res, '/admin?m=oauth', { 'Set-Cookie': clear }); }
+  if (!allowed) return redirect(res, '/admin?m=noauth', { 'Set-Cookie': clear });
+  return redirect(res, '/admin', { 'Set-Cookie': [cookie(req, 'sid', newSession(), SESSION_MS / 1000), cookie(req, 'pcsrf', '', 0), clear] });
+}
+
 /* ---------- servidor ---------- */
 async function handle(req, res) {
   const u = new URL(req.url, 'http://localhost');
@@ -419,12 +586,17 @@ async function handle(req, res) {
 
   if (m === 'GET' && (p === '/' || p === '/index.html')) {
     let c; try { c = sanitizeContent(readContent(), []); } catch (e) { return send(res, 500, 'Error leyendo content.json', 'text/plain; charset=utf-8'); }
-    return send(res, 200, renderPublic(c), null, { 'Cache-Control': 'no-cache' });
+    const extra = { 'Cache-Control': 'no-cache' };
+    if (p === '/' && noteVisit(req)) extra['Set-Cookie'] = cookie(req, 'vst', '1', 30 * 60);
+    return send(res, 200, renderPublic(c), null, extra);
   }
   if (m === 'GET' && p.startsWith('/uploads/')) {
     const name = p.slice(9);
     if (!/^[a-f0-9]{32}\.(jpg|png|webp|gif)$/.test(name)) return send(res, 404, 'No encontrado', 'text/plain; charset=utf-8');
     return serveFile(res, path.join(UPLOADS, name), 'public, max-age=86400');
+  }
+  if (m === 'GET' && /^\/img\/[a-z0-9_-]+\.jpg$/i.test(p)) {
+    return serveFile(res, path.join(PUBLIC, 'img', path.basename(p)), 'public, max-age=86400');
   }
   if (m === 'GET' && /^\/[a-z0-9_-]+\.(css|js|svg|png|ico)$/i.test(p)) {
     return serveFile(res, path.join(PUBLIC, path.basename(p)), 'no-cache');
@@ -435,10 +607,9 @@ async function handle(req, res) {
     if (m !== 'GET') return send(res, 405, 'Método no permitido', 'text/plain; charset=utf-8');
     const sess = getSession(req);
     if (sess) return send(res, 200, panelPage(sess), null, { 'Cache-Control': 'no-store' });
-    if (!authExists()) ensureSetupCode();
     const { t, headers } = preCsrf(req, res);
     const msg = u.searchParams.get('m');
-    const MSGS = { bad: 'Usuario o contraseña incorrectos.', lock: 'Demasiados intentos fallidos. Espera 15 minutos e inténtalo de nuevo.', out: 'Cerraste sesión.', exp: 'La página expiró. Inténtalo otra vez.', pw: 'Contraseña cambiada. Ingresa con tu nueva contraseña.', exists: 'La cuenta de dueño ya existe. Inicia sesión.', mismatch: 'Las contraseñas no coinciden.', short: 'La contraseña debe tener al menos 8 caracteres y el usuario al menos 3.', key: 'El código de instalación no es correcto.' };
+    const MSGS = { bad: 'Usuario o contraseña incorrectos.', lock: 'Demasiados intentos fallidos. Espera 15 minutos e inténtalo de nuevo.', out: 'Cerraste sesión.', exp: 'La página expiró. Inténtalo otra vez.', pw: 'Contraseña cambiada. Ingresa con tu nueva contraseña.', exists: 'La cuenta de dueño ya existe. Inicia sesión.', mismatch: 'Las contraseñas no coinciden.', short: 'La contraseña debe tener al menos 8 caracteres y el usuario al menos 3.', noauth: 'Esta cuenta no está autorizada', oauth: 'No se pudo iniciar sesión con esa red. Inténtalo de nuevo.', state: 'El inicio de sesión social expiró. Inténtalo otra vez.', noaccount: 'Primero crea la cuenta de dueño con usuario y contraseña.' };
     return send(res, 200, authPage(authExists() ? 'login' : 'setup', t, MSGS[msg] || '', msg === 'out' || msg === 'pw'), null, Object.assign({ 'Cache-Control': 'no-store' }, headers));
   }
   if (m === 'POST' && (p === '/admin/setup' || p === '/admin/login')) {
@@ -448,8 +619,6 @@ async function handle(req, res) {
     if (p === '/admin/setup') {
       if (authExists()) return redirect(res, '/admin?m=exists');
       if (lockMinutes(ip)) return redirect(res, '/admin?m=lock');
-      const code = ensureSetupCode();
-      if (!code || !safeEqual(String(body.setupCode || '').trim().toUpperCase(), code.toUpperCase())) { registerFail(ip); return redirect(res, lockMinutes(ip) ? '/admin?m=lock' : '/admin?m=key'); }
       const user = String(body.username || '').trim().toLowerCase();
       const pw = String(body.password || '');
       if (user.length < 3 || user.length > 40 || pw.length < 8 || pw.length > 200) return redirect(res, '/admin?m=short');
@@ -457,7 +626,7 @@ async function handle(req, res) {
       const h = await makeHash(pw);
       if (authExists()) return redirect(res, '/admin?m=exists');
       fs.writeFileSync(AUTH_FILE, JSON.stringify({ username: user, salt: h.salt, hash: h.hash, created: new Date().toISOString() }, null, 2), { mode: 0o600, flag: 'wx' });
-      attempts.delete(ip); consumeSetupCode();
+      attempts.delete(ip);
       return redirect(res, '/admin', { 'Set-Cookie': [cookie(req, 'sid', newSession(), SESSION_MS / 1000), cookie(req, 'pcsrf', '', 0)] });
     }
     if (!authExists()) return redirect(res, '/admin');
@@ -477,7 +646,7 @@ async function handle(req, res) {
     const sess = getSession(req);
     if (!sess) return sendJson(res, 401, { error: 'Tu sesión expiró. Vuelve a iniciar sesión.' });
     if (m === 'GET' && p === '/admin/api/content') {
-      return sendJson(res, 200, { content: sanitizeContent(readContent(), []), icons: Object.fromEntries(Object.entries(ICONS).map(([k, v]) => [k, v.label])), iconSvg: Object.fromEntries(Object.entries(ICONS).map(([k, v]) => [k, v.svg])) });
+      return sendJson(res, 200, { content: sanitizeContent(readContent(), []), visits: visitCount, icons: Object.fromEntries(Object.entries(ICONS).map(([k, v]) => [k, v.label])), iconSvg: Object.fromEntries(Object.entries(ICONS).map(([k, v]) => [k, v.svg])) });
     }
     if (m !== 'POST') return sendJson(res, 405, { error: 'Método no permitido' });
     if (!sameOrigin(req) || !safeEqual(req.headers['x-csrf-token'] || '', sess.csrf)) return sendJson(res, 403, { error: 'Token de seguridad inválido. Recarga la página.' });
@@ -528,6 +697,17 @@ async function handle(req, res) {
     }
     return sendJson(res, 404, { error: 'No encontrado' });
   }
+  const oauthStart = /^\/auth\/(google|facebook|x)$/.exec(p);
+  if (m === 'GET' && oauthStart) {
+    const provider = oauthStart[1];
+    if (!oauthClient(provider).id) return send(res, 404, 'No disponible', 'text/plain; charset=utf-8');
+    const state = crypto.randomBytes(24).toString('hex');
+    const pkce = provider === 'x' ? makePkce() : { verifier: '', challenge: '' };
+    const payload = Buffer.from(JSON.stringify({ p: provider, s: state, v: pkce.verifier, t: Date.now() })).toString('base64url');
+    return redirect(res, oauthAuthorizeUrl(provider, state, pkce.challenge), { 'Set-Cookie': oauthCookie(req, payload, 600) });
+  }
+  const oauthBack = /^\/auth\/(google|facebook|x)\/callback$/.exec(p);
+  if (m === 'GET' && oauthBack) return handleOAuthCallback(req, res, u, oauthBack[1]);
   return send(res, 404, '<!doctype html><meta charset="utf-8"><title>No encontrado</title><p style="font-family:sans-serif">Página no encontrada. <a href="/">Volver al inicio</a></p>');
 }
 
@@ -538,4 +718,4 @@ http.createServer((req, res) => {
     console.error(e);
     send(res, 500, 'Error interno', 'text/plain; charset=utf-8');
   });
-}).listen(PORT, () => { ensureSetupCode(); console.log(`Página lista en http://localhost:${PORT}  ·  Panel: http://localhost:${PORT}/admin`); });
+}).listen(PORT, () => { console.log(`Página lista en http://localhost:${PORT}  ·  Panel: http://localhost:${PORT}/admin`); });

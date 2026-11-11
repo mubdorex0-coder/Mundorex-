@@ -18,16 +18,12 @@ Página web para tu negocio de turismo en Baños de Agua Santa: Chivas en Baños
 Para usar otro puerto: `PORT=8080 node server.js`.
 
 ## 3. Primer ingreso (crear tu cuenta)
-- Al iniciar el servidor sin cuenta creada, se genera un **código de instalación** de un solo uso (8 letras/números). Lo verás en la terminal, por ejemplo:
-  `*** Código de instalación para crear la cuenta del dueño: ABCD2345 ***`
-  y también queda guardado en el archivo **`setup-code.txt`** de la carpeta del proyecto (solo lo puede leer el dueño del servidor). El código **nunca** se muestra en la página web.
-- Entra a **/admin**: aparece **"Crear cuenta de dueño"**. Escribe el código de instalación, tu usuario y una contraseña de al menos 8 caracteres (dos veces).
-- Al crear la cuenta, el código se invalida y `setup-code.txt` se borra. No hay contraseña de fábrica y solo puede existir **una** cuenta.
-- Si escribes mal el código, cuenta como intento fallido (5 fallos = 15 minutos de bloqueo). Así, aunque la página esté publicada, nadie puede adueñarse del panel sin ese código.
-- En hostings donde no ves archivos (Render, Railway), mira el código en los **logs** del servicio, o define tú el código con la variable de entorno `SETUP_CODE` (por ejemplo `SETUP_CODE=MiCodigo2026 node server.js`); en ese caso no se crea `setup-code.txt`. Después de crear la cuenta puedes borrar esa variable.
+- Entra a **/admin**. Si todavía no hay cuenta, verás **"Crear cuenta de dueño"**.
+- Escribe un usuario (mínimo 3 caracteres) y una contraseña de al menos 8 caracteres, y confírmala. No hace falta ningún código de instalación.
+- Solo puede existir **una** cuenta. Cuando ya existe, la página pasa a ser **"Iniciar sesión"** y no se puede crear otra.
 - Si fallas 5 veces la contraseña, el ingreso se bloquea 15 minutos.
 - La sesión dura 12 horas. Usa **"Cerrar sesión"** cuando termines.
-- ¿Olvidaste la contraseña? Borra el archivo `auth.json` del servidor y reinicia el servidor: se genera un código de instalación nuevo y puedes crear la cuenta otra vez (tu contenido no se pierde).
+- ¿Olvidaste la contraseña? Borra el archivo `auth.json` del servidor y reinicia: podrás crear la cuenta otra vez (tu contenido no se pierde).
 
 ## 4. Cómo editar cada sección
 Entra a /admin, elige la sección en el menú de la izquierda, haz tus cambios y pulsa **"Guardar cambios"** (abajo a la derecha). Los cambios se ven al instante en la página.
@@ -60,6 +56,33 @@ Opciones:
 - `public/`: estilos y el código del panel.
 - `uploads/`: fotos que subes desde el panel.
 - `auth.json`: se crea solo cuando haces tu cuenta (guarda la contraseña cifrada). **No lo compartas.**
-- `setup-code.txt`: código de instalación temporal; existe solo hasta que creas la cuenta.
+- `visits.json`: contador de visitas de la página pública. Se crea solo; no hace falta editarlo.
+- `public/img/`: fotos de fondo de la página.
 
 Haz copias de seguridad de `content.json`, `auth.json` y `uploads/` de vez en cuando.
+
+## 8. Iniciar sesión con Google, Facebook o X
+En la pantalla **Iniciar sesión** (cuando la cuenta de dueño ya existe) pueden aparecer botones de Google, Facebook y X. Solo se muestra el botón de una red si sus variables están definidas en el servidor. Instagram no está: ya no ofrece este tipo de acceso.
+
+La red solo entra si es la cuenta del dueño. Si no, la página dice **«Esta cuenta no está autorizada»** y no abre el panel. Google y Facebook comparan el correo verificado de esa cuenta con `OWNER_EMAIL` (si no la defines, vale `mariobropvp0@gmail.com`). X no entrega el correo: compara el usuario de X con `OWNER_X_USERNAME` (sin @).
+
+Las direcciones de retorno se arman con `PUBLIC_URL` (sin barra al final). Si no la defines, se usa `https://mundorex.onrender.com`. En Render pon estas variables en **Environment** del servicio y reinicia.
+
+**Google**
+1. Entra a [Google Cloud Console](https://console.cloud.google.com/) → APIs y servicios → Pantalla de consentimiento de OAuth (tipo externo) y crea las credenciales.
+2. Credenciales → Crear ID de cliente de OAuth → Aplicación web.
+3. En **URI de redirección autorizados** agrega: `https://mundorex.onrender.com/auth/google/callback` (o `PUBLIC_URL` + `/auth/google/callback`).
+4. En Render: `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`.
+
+**Facebook**
+1. Entra a [Meta for Developers](https://developers.facebook.com/) → Crear app → agrega el producto **Facebook Login**.
+2. Facebook Login → Configuración → **URI de redirección de OAuth válidos**: `https://mundorex.onrender.com/auth/facebook/callback`.
+3. Pide el permiso `email`. Cuando quieras usarlo fuera de las cuentas de prueba, pasa la app a modo activo.
+4. En Render: `FACEBOOK_APP_ID` (el identificador de la app) y `FACEBOOK_APP_SECRET`.
+
+**X (Twitter)**
+1. Entra a [developer.x.com](https://developer.x.com/) → tu proyecto → la app → **User authentication settings**.
+2. Activa **OAuth 2.0**, tipo de app web y cliente confidencial. El servidor usa el flujo con PKCE.
+3. Callback / Redirect URI: `https://mundorex.onrender.com/auth/x/callback`.
+4. Permisos: `users.read` y `tweet.read`.
+5. En Render: `X_CLIENT_ID`, `X_CLIENT_SECRET` y `OWNER_X_USERNAME` (tu usuario de X, sin @).
