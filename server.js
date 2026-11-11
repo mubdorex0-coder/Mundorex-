@@ -220,7 +220,7 @@ function sanitizeContent(c, errors) {
       finalCtaTitle: str(g.finalCtaTitle, 140), finalCtaText: str(g.finalCtaText, 400), finalCtaButton: str(g.finalCtaButton, 60),
     },
     sections: {},
-    services: [], benefits: [], products: [], testimonials: [], promotions: [],
+    services: [], lodging: [], benefits: [], products: [], testimonials: [], promotions: [],
     payments: { visible: bool(p.visible), cardFeePercent: feePercent(p.cardFeePercent), methods: [], banks: [] },
     social: {},
   };
@@ -253,6 +253,42 @@ function sanitizeContent(c, errors) {
       })).filter((r) => r.name);
     }
     out.services.push(o);
+  });
+  const lodgingDefaults = [
+    { id: 'familiares', title: 'Habitaciones familiares' },
+    { id: 'depto4', title: 'Departamentos para 4 personas' },
+    { id: 'depto8', title: 'Departamentos para 8 personas' },
+    { id: 'depto15', title: 'Departamentos para 15 personas' },
+    { id: 'jacuzzi', title: 'Departamento con jacuzzi' },
+  ];
+  const lodgingSrc = Array.isArray(c.lodging) ? c.lodging : [];
+  const fallbackRooms = ((c.services || []).find((s) => s && s.id === 'hospedajes') || {}).rooms || [];
+  out.lodging = lodgingDefaults.map((d) => {
+    const src = lodgingSrc.find((s) => s && s.id === d.id) || {};
+    let items = arr(src.items, 20);
+    if (!items.length && d.id === 'familiares') items = fallbackRooms;
+    if (!items.length) items = [{ name: d.title, priceLow: '10', priceHigh: '15', available: true }];
+    return {
+      id: d.id,
+      title: str(src.title, 80) || d.title,
+      subtitle: str(src.subtitle, 240),
+      garageCapacity: garageSpec(src.garageCapacity),
+      items: items.map((r) => ({
+        name: str(r && r.name, 80),
+        description: str(r && r.description, 300),
+        pricingMode: r && r.pricingMode === 'fixed' ? 'fixed' : 'perPerson',
+        priceLow: roomPrice(r && r.priceLow) || '10',
+        priceHigh: roomPrice(r && r.priceHigh) || '15',
+        stayPrice: roomPrice(r && r.stayPrice),
+        stayNote: str(r && r.stayNote, 200),
+        packagePrice: roomPrice(r && r.packagePrice),
+        packageItems: arr(r && r.packageItems, 20).map((x) => str(x, 80)).filter(Boolean),
+        ctaLabel: str(r && r.ctaLabel, 40) || 'Reservar',
+        available: !r || r.available == null || r.available === '' ? true : bool(r.available),
+        units: roomUnits(r && r.units),
+        garageCapacity: garageSpec(r && r.garageCapacity),
+      })).filter((r) => r.name),
+    };
   });
   out.benefits = arr(c.benefits, 8).map((b) => ({ icon: str(b && b.icon, 8), title: str(b && b.title, 80), text: str(b && b.text, 300) })).filter((b) => b.title || b.text);
   out.products = arr(c.products, 100).map((pr) => {
@@ -313,11 +349,32 @@ function unitLabel(v) {
   if (cents == null) return '';
   return cents % 100 === 0 ? `$${cents / 100}` : moneyUSD(cents);
 }
+function centsLabel(cents) {
+  if (cents == null) return '';
+  return cents % 100 === 0 ? `$${cents / 100}` : moneyUSD(cents);
+}
 function roomUnits(v) {
   if (v == null || String(v).trim() === '') return null;
   const n = Number(v);
   if (!Number.isInteger(n) || n < 0 || n > 9999) return null;
   return n;
+}
+function garageSpec(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'object' && !Array.isArray(v)) {
+    const max = roomUnits(v.max);
+    const label = str(v.label, 120);
+    if (!label && max == null) return null;
+    return { label, max };
+  }
+  const max = roomUnits(v);
+  return max == null ? null : { label: '', max };
+}
+function joinEs(list) {
+  const a = (list || []).filter(Boolean);
+  if (a.length <= 1) return a.join('');
+  if (a.length === 2) return `${a[0]} y ${a[1]}`;
+  return `${a.slice(0, -1).join(', ')} y ${a[a.length - 1]}`;
 }
 function lodgingOpen(item) {
   if (!item || item.available === false) return false;
@@ -328,6 +385,7 @@ function lodgingSoldOut(name) {
   try {
     const c = sanitizeContent(readContent(), []);
     const items = [];
+    (c.lodging || []).forEach((sec) => (sec.items || []).forEach((r) => items.push(r)));
     (c.services || []).forEach((sv) => {
       if (sv.id === 'hospedajes' || sv.id === 'departamentos') items.push(sv);
       (sv.rooms || []).forEach((r) => items.push(r));
@@ -352,48 +410,84 @@ function renderPublic(c) {
   const phoneDigits = String(g.phone || '').replace(/\D/g, '');
   const telHref = phoneDigits.startsWith('0') ? '+593' + phoneDigits.slice(1) : phoneDigits;
   const pageTitle = g.heroTitle === g.businessName ? g.businessName : `${g.businessName} · ${g.heroTitle}`;
-  const services = c.services.filter((x) => x.visible);
+  const services = c.services.filter((x) => x.visible && x.id !== 'hospedajes' && x.id !== 'departamentos');
   const feePct = feePercent(c.payments.cardFeePercent);
   const stay = c.services.find((x) => x.id === 'hospedajes') || {};
-  const stayRooms = stay.rooms || [];
   const vehiclePrice = stay.vehiclePrice != null && stay.vehiclePrice !== '' ? stay.vehiclePrice : '5';
-  const roomBook = (r, i) => {
-    const low = unitLabel(r.priceLow);
-    const high = unitLabel(r.priceHigh);
-    const priceLine = [low && `Temporada baja: ${low} por persona`, high && `Temporada alta: ${high} por persona`].filter(Boolean).join(' · ');
-    const open = lodgingOpen(r);
-    const reserve = open
-      ? `<button type="button" class="btn btn-accent buy-open" data-room="1" data-room-index="${i}" data-name="${esc(r.name)}" data-price="${esc(priceLine)}" data-vehicle="${esc(String(vehiclePrice))}" data-fee-pct="${esc(String(feePct))}" data-wa="${esc(wa)}">${esc(r.ctaLabel || 'Reservar')}</button>`
-      : '<button type="button" class="btn btn-disabled" disabled>Agotada</button>';
-    return `${availBadge(r)}<div class="room-actions">${open ? consultBtn(wa, r.name) : ''}${reserve}</div>`;
+  const lodging = c.lodging || [];
+  const anchors = { familiares: 'habitaciones-familiares', depto4: 'departamentos-4', depto8: 'departamentos-8', depto15: 'departamentos-15', jacuzzi: 'departamento-jacuzzi' };
+  const flat = [];
+  lodging.forEach((sec) => (sec.items || []).forEach((item) => flat.push({ sec, item })));
+  const garageOf = (item, sec) => item.garageCapacity || (sec && sec.garageCapacity) || null;
+  const garageText = (spec) => {
+    const price = unitLabel(vehiclePrice) || '$5';
+    if (!spec || (!spec.label && spec.max == null)) return `Garaje: ${price} por carro (consulta capacidad)`;
+    const label = spec.label || `Garaje para ${spec.max} ${spec.max === 1 ? 'carro' : 'carros'}`;
+    return `${label} · ${price} por carro`;
   };
-  const roomCards = stayRooms.map((r, i) => {
+  const roomBook = (r, sec, i) => {
+    const spec = garageOf(r, sec);
     const low = unitLabel(r.priceLow);
     const high = unitLabel(r.priceHigh);
+    const fixed = r.pricingMode === 'fixed';
+    const stayC = priceCents(r.stayPrice);
+    const packC = priceCents(r.packagePrice);
+    const priceLine = fixed
+      ? `${centsLabel((stayC || 0) + (packC || 0))} por estadía`
+      : [low && `Temporada baja: ${low} por persona`, high && `Temporada alta: ${high} por persona`].filter(Boolean).join(' · ');
+    const open = lodgingOpen(r);
+    const attrs = `data-room="1" data-room-index="${i}" data-name="${esc(r.name)}" data-price="${esc(priceLine)}" data-mode="${fixed ? 'fixed' : 'perPerson'}" data-low="${esc(r.priceLow)}" data-high="${esc(r.priceHigh)}" data-stay="${esc(r.stayPrice || '')}" data-stay-note="${esc(r.stayNote || '')}" data-pack="${esc(r.packagePrice || '')}" data-pack-items="${esc((r.packageItems || []).join('|'))}" data-garage-max="${spec && spec.max != null ? spec.max : ''}" data-vehicle="${esc(String(vehiclePrice))}" data-fee-pct="${esc(String(feePct))}" data-wa="${esc(wa)}"`;
+    const reserve = open
+      ? `<button type="button" class="btn btn-accent buy-open" ${attrs}>${esc(r.ctaLabel || 'Reservar')}</button>`
+      : '<button type="button" class="btn btn-disabled" disabled>Agotada</button>';
+    return `${availBadge(r)}<p class="room-rate">${esc(garageText(spec))}</p><div class="room-actions">${open ? consultBtn(wa, r.name) : ''}${reserve}</div>`;
+  };
+  const lodgingCard = (r, sec, i) => {
+    const low = unitLabel(r.priceLow);
+    const high = unitLabel(r.priceHigh);
+    const fixed = r.pricingMode === 'fixed';
+    const stayC = priceCents(r.stayPrice);
+    const packC = priceCents(r.packagePrice);
+    const stayLine = fixed && stayC != null ? `Departamento: ${centsLabel(stayC)} — ${r.stayNote || ''}` : '';
+    const packLine = fixed && packC != null ? `Paquete incluido: ${centsLabel(packC)} — ${joinEs(r.packageItems)}` : '';
     return `<article class="room-card">
       <h3>${esc(r.name)}</h3>
       ${r.description ? `<p>${esc(r.description)}</p>` : ''}
-      <p class="room-rate">${low ? `Temporada baja: ${esc(low)} por persona` : 'Temporada baja: Consultar precio'}</p>
-      <p class="room-rate">${high ? `Temporada alta: ${esc(high)} por persona` : 'Temporada alta: Consultar precio'}</p>
-      ${roomBook(r, i)}
+      ${fixed ? `<p class="room-rate">${esc(centsLabel((stayC || 0) + (packC || 0)))} por estadía</p>${stayLine ? `<p>${esc(stayLine)}</p>` : ''}${packLine ? `<p>${esc(packLine)}</p>` : ''}${(r.packageItems || []).length ? `<ul class="pack-list">${r.packageItems.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}` : `<p class="room-rate">${low ? `Temporada baja: ${esc(low)} por persona` : 'Temporada baja: Consultar precio'}</p><p class="room-rate">${high ? `Temporada alta: ${esc(high)} por persona` : 'Temporada alta: Consultar precio'}</p>`}
+      ${roomBook(r, sec, i)}
     </article>`;
+  };
+  let flatI = 0;
+  const lodgingHtml = lodging.map((sec) => {
+    const cards = (sec.items || []).map((r) => lodgingCard(r, sec, flatI++)).join('');
+    const anchor = anchors[sec.id] || sec.id;
+    return `<section class="section" id="${esc(anchor)}"><div class="wrap">
+      <div class="sec-head"><h2>${esc(sec.title)}</h2>${sec.subtitle ? `<p>${esc(sec.subtitle)}</p>` : ''}</div>
+      <div class="room-grid">${cards}</div>
+      <div class="mini-comments" data-section="${esc(sec.id)}">
+        <h3>Comentarios</h3>
+        <p class="mini-guest"><a class="btn btn-primary" href="#comentarios" data-open-register>Regístrate</a></p>
+        <form class="mini-form comment-form" hidden><label>Tu nombre<input name="author" required maxlength="60" autocomplete="name"></label><label>Tu comentario<textarea name="text" required maxlength="500" rows="2"></textarea></label><label>Estrellas <small>(opcional)</small><select name="stars"><option value="">Sin estrellas</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label><button class="btn btn-accent" type="submit">Publicar</button><p class="comment-msg" role="status"></p></form>
+        <div class="mini-list comment-list"></div>
+      </div>
+    </div></section>`;
   }).join('');
-  const roomGrid = roomCards ? `<div class="room-grid" aria-label="Tipos de habitación">${roomCards}</div>` : '';
-  const roomOptions = stayRooms.map((r, i) => {
+  flatI = 0;
+  const roomOptions = lodging.flatMap((sec) => (sec.items || []).map((r) => {
+    const i = flatI++;
+    const spec = garageOf(r, sec);
     const open = lodgingOpen(r);
-    return `<option value="${i}" data-low="${esc(r.priceLow)}" data-high="${esc(r.priceHigh)}" data-available="${open ? '1' : '0'}"${open ? '' : ' disabled'}>${esc(r.name)}${open ? '' : ' (Agotada)'}</option>`;
-  }).join('');
+    const fixed = r.pricingMode === 'fixed';
+    return `<option value="${i}" data-mode="${fixed ? 'fixed' : 'perPerson'}" data-low="${esc(r.priceLow)}" data-high="${esc(r.priceHigh)}" data-stay="${esc(r.stayPrice || '')}" data-stay-note="${esc(r.stayNote || '')}" data-pack="${esc(r.packagePrice || '')}" data-pack-note="${esc(joinEs(r.packageItems))}" data-pack-items="${esc((r.packageItems || []).join('|'))}" data-garage-max="${spec && spec.max != null ? spec.max : ''}" data-available="${open ? '1' : '0'}"${open ? '' : ' disabled'}>${esc(r.name)}${open ? '' : ' (Agotada)'}</option>`;
+  })).join('');
+  const lodgingNav = lodging.map((sec) => `<a href="#${esc(anchors[sec.id] || sec.id)}">${esc(sec.title)}</a>`).join('');
+  const lodgingFoot = lodging.map((sec) => `<li><a href="#${esc(anchors[sec.id] || sec.id)}">${esc(sec.title)}</a></li>`).join('');
   const byId = (id) => c.services.find((x) => x.id === id && x.visible);
   const chiva = byId('chivas');
   const depto = byId('departamentos');
   const packageCards = [
     chiva ? `<article class="card package"><h3>${esc(chiva.emoji || '')} ${esc(chiva.title)}</h3><p>${esc(chiva.description)}</p><a class="btn btn-primary" href="#svc-${esc(chiva.id)}">${esc(chiva.ctaLabel || 'Ver tour')}</a></article>` : '',
-    ...stayRooms.map((r, i) => {
-      const low = unitLabel(r.priceLow);
-      const high = unitLabel(r.priceHigh);
-      return `<article class="card package"><h3>${esc(r.name)}</h3>${r.description ? `<p>${esc(r.description)}</p>` : ''}<p class="room-rate">${low ? `Temporada baja: ${esc(low)} por persona` : 'Temporada baja: Consultar precio'}</p><p class="room-rate">${high ? `Temporada alta: ${esc(high)} por persona` : 'Temporada alta: Consultar precio'}</p>${roomBook(r, i)}</article>`;
-    }),
-    depto ? `<article class="card package"><h3>${esc(depto.emoji || '')} ${esc(depto.title)}</h3><p>${esc(depto.description)}</p>${availBadge(depto)}<div class="room-actions">${lodgingOpen(depto) ? consultBtn(wa, depto.title) : ''}${lodgingOpen(depto) ? `<button type="button" class="btn btn-primary buy-open" data-room="1" data-room-pick="1" data-name="${esc(depto.title)}" data-price="" data-vehicle="${esc(String(vehiclePrice))}" data-fee-pct="${esc(String(feePct))}" data-wa="${esc(wa)}">${esc(depto.ctaLabel || 'Reservar')}</button>` : '<button type="button" class="btn btn-disabled" disabled>Agotada</button>'}</div></article>` : '',
+    ...flat.map(({ sec, item }, i) => lodgingCard(item, sec, i).replace('room-card', 'card package')),
   ].filter(Boolean).join('');
   const svcHtml = services.map((sv, i) => {
     const lodging = sv.id === 'hospedajes' || sv.id === 'departamentos';
@@ -413,7 +507,7 @@ function renderPublic(c) {
       ${sv.chips.length ? `<ul class="chips">${sv.chips.map((ch) => `<li>${esc(ch)}</li>`).join('')}</ul>` : ''}
       ${lodgingPick}
     </div>
-  </article>${sv.id === 'hospedajes' ? roomGrid : ''}`;
+  </article>`;
   }).join('');
   const products = c.products.map((pr) => {
     const price = fmtPrice(pr.price, pr.currency);
@@ -464,7 +558,7 @@ function renderPublic(c) {
       <label class="pay-field">Tipo de habitación
         <select id="pay-room-type"><option value="">Elige el tipo de habitación</option>${roomOptions}</select>
       </label>
-      <label class="pay-field">Temporada
+      <label class="pay-field" id="pay-season-field">Temporada
         <select id="pay-season"><option value="">Elige la temporada</option><option value="baja">Temporada baja</option><option value="alta">Temporada alta</option></select>
       </label>
       <div class="pay-field-row">
@@ -480,6 +574,7 @@ function renderPublic(c) {
       </div>
       <p class="pay-age-note">Niños menores de 5 años no pagan. Desde los 5 años pagan como adulto.</p>
       <p id="pay-room-error" class="pay-room-error" hidden></p>
+      <div id="pay-pack" hidden></div>
       <ul id="pay-room-math" class="pay-card-math" hidden></ul>
     </div>
     <div class="pay-choices">${payBankOpts}<div class="pay-choice pay-choice-card" role="button" tabindex="0" data-method="Tarjeta de crédito"><button type="button" class="pay-card-btn" aria-expanded="false" aria-controls="pay-card-panel">${svgIcon(ICONS.card.svg)}<span>Tarjeta de crédito</span></button></div></div>
@@ -518,7 +613,7 @@ function renderPublic(c) {
 <div class="page-bg" aria-hidden="true"><div class="page-bg-slide a"></div><div class="page-bg-slide b"></div><div class="page-bg-shade"></div><canvas id="mist"></canvas></div>
 <header class="nav"><div class="wrap nav-in">
   <a class="brand" href="#inicio"><span class="brand-mark">⛰</span>${esc(g.businessName)}</a>
-  <nav class="links" aria-label="Secciones"><a href="#inicio">Inicio</a><a href="#catalogo">Catálogo</a><a href="#paquetes">Paquetes</a><a href="#promociones">Promociones</a><a href="#comentarios">Comentarios</a><a href="#redes">Redes sociales</a>
+  <nav class="links" aria-label="Secciones"><a href="#inicio">Inicio</a>${lodgingNav}<a href="#catalogo">Catálogo</a><a href="#paquetes">Paquetes</a><a href="#promociones">Promociones</a><a href="#comentarios">Comentarios</a><a href="#redes">Redes sociales</a>
   <a class="btn btn-wa btn-sm" href="${esc(wa ? `https://wa.me/${wa}` : '#contacto')}"${wa ? EXT : ''}>Escríbenos por WhatsApp</a>
   <a class="btn btn-login btn-sm" href="/admin">Iniciar sesión</a></nav>
 </div></header>
@@ -529,7 +624,7 @@ function renderPublic(c) {
   <p class="lead">${esc(g.heroSubtitle)}</p>
   <div class="hero-cta"><a class="btn btn-wa btn-lg" href="${esc(waLink(wa, g.whatsappMessage))}"${wa ? EXT : ''}>${svgIcon(SOCIAL_ICONS.whatsapp.svg)} ${esc(g.heroCta || 'Escríbenos por WhatsApp')}</a>
   <a class="btn btn-ghost btn-lg" href="#servicios">Ver servicios</a>
-  <nav class="hero-pills" aria-label="Secciones del inicio"><a href="#inicio">Inicio</a><a href="#catalogo">Catálogo</a><a href="#paquetes">Paquetes</a><a href="#promociones">Promociones</a><a href="#comentarios">Comentarios</a><a href="#redes">Redes sociales</a></nav></div>
+  <nav class="hero-pills" aria-label="Secciones del inicio"><a href="#inicio">Inicio</a>${lodgingNav}<a href="#catalogo">Catálogo</a><a href="#paquetes">Paquetes</a><a href="#promociones">Promociones</a><a href="#comentarios">Comentarios</a><a href="#redes">Redes sociales</a></nav></div>
   <p class="visit-pill">👀 ${formatVisits(visitCount)} visitas</p>
 </div><svg class="hero-mtn" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 120V70l120-30 140 45 170-70 160 60 130-40 200 55 160-75 180 70 180-35v100z"/></svg></section>
 
@@ -557,6 +652,7 @@ function renderPublic(c) {
   <div id="comment-user" class="comment-auth" hidden>
     <p>Hola, <strong id="comment-hello"></strong></p>
     <form id="comment-form" class="comment-form">
+      <label>Tu nombre<input name="author" required maxlength="60" autocomplete="name"></label>
       <label>Tu comentario<textarea name="text" required maxlength="500" rows="3"></textarea></label>
       <label>Estrellas <small>(opcional)</small>
         <select name="stars"><option value="">Sin estrellas</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
@@ -568,7 +664,7 @@ function renderPublic(c) {
   </div>
   <div id="comment-list" class="comment-list"></div>
 </div></section>
-
+${lodgingHtml}
 <section class="section" id="servicios"><div class="wrap">
   <div class="sec-head"><h2>${esc(s.servicesTitle)}</h2><p>${esc(s.servicesSubtitle)}</p></div>
   ${svcHtml}
@@ -622,7 +718,7 @@ ${c.payments.visible ? `<section class="section" id="pagos"><div class="wrap">
     ${g.email ? `<li>Correo: <a href="mailto:${esc(g.email)}">${esc(g.email)}</a></li>` : ''}
     ${g.address ? `<li>Dirección: ${esc(g.address)}</li>` : ''}
   </ul></div>
-  <div><h4>Enlaces</h4><ul class="contact"><li><a href="#inicio">Inicio</a></li><li><a href="#catalogo">Catálogo</a></li><li><a href="#paquetes">Paquetes</a></li><li><a href="#promociones">Promociones</a></li><li><a href="#comentarios">Comentarios</a></li><li><a href="#redes">Redes sociales</a></li><li><a class="foot-login" href="/admin">Iniciar sesión</a></li></ul></div>
+  <div><h4>Enlaces</h4><ul class="contact"><li><a href="#inicio">Inicio</a></li>${lodgingFoot}<li><a href="#catalogo">Catálogo</a></li><li><a href="#paquetes">Paquetes</a></li><li><a href="#promociones">Promociones</a></li><li><a href="#comentarios">Comentarios</a></li><li><a href="#redes">Redes sociales</a></li><li><a class="foot-login" href="/admin">Iniciar sesión</a></li></ul></div>
 </div><div class="wrap copy">© ${new Date().getFullYear()} ${esc(g.businessName)}. Todos los derechos reservados.</div></footer>
 ${wa ? `<a class="wa-float" href="${esc(waLink(wa, g.whatsappMessage))}"${EXT} aria-label="Escríbenos por WhatsApp">${svgIcon(SOCIAL_ICONS.whatsapp.svg)}<span>WhatsApp</span></a>` : ''}
 ${payModal}
@@ -926,7 +1022,7 @@ async function handle(req, res) {
   if (p === '/cuenta' && m === 'GET') return redirect(res, '/#comentarios');
   if (p === '/api/comentarios' && m === 'GET') {
     const me = customerFromReq(req);
-    const comments = readComments().map((c) => ({ name: c.name, text: c.text, stars: c.stars || 0, date: c.date }));
+    const comments = readComments().map((c) => ({ name: c.name, text: c.text, stars: c.stars || 0, date: c.date, section: c.section || '' }));
     return sendJson(res, 200, { comments, user: me ? { name: me.name } : null });
   }
   if (p === '/api/comentarios/registro' && m === 'POST') {
@@ -979,10 +1075,13 @@ async function handle(req, res) {
     if (!me) return sendJson(res, 401, { error: 'Inicia sesión para comentar.' });
     const body = await parseBody(req);
     const text = str(body && body.text, 500);
+    const displayName = str(body && body.name, 60);
     const stars = Math.round(Number(body && body.stars));
+    const section = ['familiares', 'depto4', 'depto8', 'depto15', 'jacuzzi'].includes(str(body && body.section, 40)) ? str(body.section, 40) : '';
+    if (!displayName) return sendJson(res, 400, { error: 'Escribe tu nombre.' });
     if (text.length < 2) return sendJson(res, 400, { error: 'Escribe un comentario.' });
     const comments = readComments();
-    comments.unshift({ id: rand(8), name: me.name, text, stars: stars >= 1 && stars <= 5 ? stars : 0, date: new Date().toISOString() });
+    comments.unshift({ id: rand(8), name: displayName, text, stars: stars >= 1 && stars <= 5 ? stars : 0, section, date: new Date().toISOString() });
     writeJsonAtomic(COMMENTS_FILE, comments.slice(0, 200));
     return sendJson(res, 200, { ok: true });
   }

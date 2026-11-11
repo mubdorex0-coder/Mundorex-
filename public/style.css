@@ -230,8 +230,15 @@ body.modal-open{overflow:hidden}
 .comment-msg{margin:0;font-weight:700;color:#0b5e4e}
 .comment-list{display:grid;gap:12px;max-width:720px;margin:12px auto 0}
 .comment-list article{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px}
-.comment-list h3{margin:0 0 .3em;font-size:1rem}
+.comment-list h3,.comment-name{margin:0 0 .2em;font-size:1.05rem;color:var(--ink);font-weight:800}
 .comment-list p{margin:0;color:var(--muted)}
+.comment-meta{font-size:.85rem;margin:0 0 .35em}
+.comment-text{color:var(--ink)}
+.pack-list{margin:.15rem 0 0;padding-left:1.15rem}
+.pack-list li{margin:.12rem 0}
+.mini-comments{margin-top:28px;max-width:720px}
+.mini-comments h3{margin:0 0 .4em}
+#pay-pack{margin:0 0 8px}
 #redes .social{background:var(--soft);color:var(--primary);border:1px solid var(--line)}
 #redes .social:hover{background:var(--primary);color:#fff}
 .package h3,.promo h3{margin-bottom:.35em}

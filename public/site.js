@@ -40,7 +40,10 @@
     var cardBtn = modal && modal.querySelector('.pay-card-btn');
     return !!(cardBtn && cardBtn.getAttribute('aria-expanded') === 'true');
   }
-  function money(cents) { return '$' + (cents / 100).toFixed(2); }
+  function money(cents) {
+    var n = cents / 100;
+    return '$' + (cents % 100 === 0 ? String(n) : n.toFixed(2));
+  }
   function countOf(id, min) {
     var el = document.getElementById(id);
     if (!el || String(el.value).trim() === '') return null;
@@ -58,6 +61,15 @@
   function updateSeasonLabels() {
     var opt = selectedRoom();
     var sel = document.getElementById('pay-season');
+    var seasonField = document.getElementById('pay-season-field');
+    var vehicles = document.getElementById('pay-vehicles');
+    var fixed = !!(opt && opt.getAttribute('data-mode') === 'fixed');
+    if (seasonField) seasonField.hidden = fixed;
+    if (vehicles) {
+      var max = opt && opt.getAttribute('data-garage-max');
+      if (max) vehicles.max = max;
+      else vehicles.removeAttribute('max');
+    }
     if (!sel || sel.options.length < 3) return;
     var cur = sel.value;
     var low = opt ? opt.getAttribute('data-low') : '';
@@ -102,6 +114,8 @@
     if (vehicles) vehicles.value = '';
     if (err) err.hidden = true;
     if (math) { math.hidden = true; math.textContent = ''; }
+    var packBox = document.getElementById('pay-pack');
+    if (packBox) { packBox.hidden = true; packBox.textContent = ''; }
     updateSeasonLabels();
     if (type && type.value && title) title.textContent = type.options[type.selectedIndex].textContent;
   }
@@ -115,37 +129,80 @@
     var math = document.getElementById('pay-room-math');
     var rawSel = document.getElementById('pay-room-type');
     var rawOpt = rawSel && rawSel.selectedIndex >= 0 ? rawSel.options[rawSel.selectedIndex] : null;
+    var fixed = !!(opt && opt.getAttribute('data-mode') === 'fixed');
+    var gmax = opt && opt.getAttribute('data-garage-max');
     var msg = '';
     if (rawOpt && rawOpt.getAttribute('data-available') === '0') msg = 'Esta habitación está agotada.';
+    else if (!opt) msg = 'Elige el tipo de habitación';
     else if (adults == null || kids == null) msg = 'Indica cuántos adultos y cuántos niños menores de 5 años son';
     else if (vehicles == null) msg = 'Indica el número de vehículos';
-    else if (!season) msg = 'Elige la temporada';
-    else if (!opt) msg = 'Elige el tipo de habitación';
+    else if (gmax && vehicles > Number(gmax)) msg = 'El garaje admite hasta ' + gmax + (Number(gmax) === 1 ? ' carro.' : ' carros.');
+    else if (!fixed && !season) msg = 'Elige la temporada';
     else if (opt.getAttribute('data-available') === '0') msg = 'Esta habitación está agotada.';
+    var packBox = document.getElementById('pay-pack');
     if (msg) {
       if (math) math.hidden = true;
+      if (packBox) packBox.hidden = true;
       if (err) { err.hidden = !roomTried; err.textContent = msg; }
       if (proof) { proof.setAttribute('href', '#contacto'); proof.setAttribute('aria-disabled', 'true'); }
       return false;
     }
     if (err) err.hidden = true;
-    var unit = Number(season === 'alta' ? opt.getAttribute('data-high') : opt.getAttribute('data-low'));
     var vehiclePrice = Number(currentBuy.getAttribute('data-vehicle') || '5');
     var feePct = Number(currentBuy.getAttribute('data-fee-pct') || '15');
-    if (!isFinite(unit) || !isFinite(vehiclePrice)) return false;
-    var roomCents = Math.round(unit * 100) * adults;
-    var parkCents = Math.round(vehiclePrice * 100) * vehicles;
-    var sub = roomCents + parkCents;
+    if (!isFinite(vehiclePrice)) return false;
+    var seasonName = '';
+    var lines;
+    var packItems = [];
+    var sub;
+    if (fixed) {
+      var stay = Number(opt.getAttribute('data-stay'));
+      var pack = Number(opt.getAttribute('data-pack'));
+      if (!isFinite(stay) || !isFinite(pack)) return false;
+      var stayCents = Math.round(stay * 100);
+      var packCents = Math.round(pack * 100);
+      var parkCents = Math.round(vehiclePrice * 100) * vehicles;
+      sub = stayCents + packCents + parkCents;
+      var parkTxt = money(Math.round(vehiclePrice * 100));
+      lines = [
+        'Departamento: ' + money(stayCents) + ' — ' + (opt.getAttribute('data-stay-note') || ''),
+        'Paquete incluido: ' + money(packCents) + ' — ' + (opt.getAttribute('data-pack-note') || ''),
+        'Garaje (' + vehicles + ' carros × ' + parkTxt + '): ' + money(parkCents),
+        'Subtotal: ' + money(sub)
+      ];
+      packItems = String(opt.getAttribute('data-pack-items') || '').split('|').filter(Boolean);
+      if (packBox) {
+        packBox.hidden = !packItems.length;
+        packBox.textContent = '';
+        if (packItems.length) {
+          var ul = document.createElement('ul');
+          ul.className = 'pack-list';
+          packItems.forEach(function (item) {
+            var li = document.createElement('li');
+            li.textContent = item;
+            ul.appendChild(li);
+          });
+          packBox.appendChild(ul);
+        }
+      }
+    } else {
+      var unit = Number(season === 'alta' ? opt.getAttribute('data-high') : opt.getAttribute('data-low'));
+      if (!isFinite(unit)) return false;
+      if (packBox) packBox.hidden = true;
+      var roomCents = Math.round(unit * 100) * adults;
+      var parkCentsPerson = Math.round(vehiclePrice * 100) * vehicles;
+      sub = roomCents + parkCentsPerson;
+      seasonName = season === 'alta' ? 'alta' : 'baja';
+      var unitTxt = money(Math.round(unit * 100));
+      var parkTxtPerson = money(Math.round(vehiclePrice * 100));
+      lines = [
+        'Habitación (' + adults + ' personas × ' + unitTxt + ' temporada ' + seasonName + '): ' + money(roomCents),
+        'Garaje (' + vehicles + ' carros × ' + parkTxtPerson + '): ' + money(parkCentsPerson),
+        'Subtotal: ' + money(sub)
+      ];
+    }
     var fee = cardOpen() ? Math.round(sub * feePct / 100) : 0;
     var total = sub + fee;
-    var seasonName = season === 'alta' ? 'alta' : 'baja';
-    var unitTxt = money(Math.round(unit * 100));
-    var parkTxt = money(Math.round(vehiclePrice * 100));
-    var lines = [
-      'Habitación (' + adults + ' personas × ' + unitTxt + ' temporada ' + seasonName + '): ' + money(roomCents),
-      'Parqueadero (' + vehicles + ' carros × ' + parkTxt + '): ' + money(parkCents),
-      'Subtotal: ' + money(sub)
-    ];
     if (cardOpen()) lines.push('Comisión tarjeta (' + feePct + '%): ' + money(fee));
     lines.push('Total a pagar: ' + money(total));
     if (math) {
@@ -158,8 +215,8 @@
       });
     }
     var roomName = opt.textContent;
-    lastQuote = { room: true, product: roomName, season: seasonName, adults: adults, kids: kids, vehicles: vehicles, lines: lines, total: money(total) };
-    var text = 'Hola, ya pagué ' + roomName + '. Temporada ' + seasonName + '. Adultos y niños de 5 años en adelante: ' + adults + '. Niños menores de 5 años: ' + kids + '. Vehículos: ' + vehicles + '. ' + lines.join('. ') + '. Te envío el comprobante.';
+    lastQuote = { room: true, product: roomName, season: seasonName, adults: adults, kids: kids, vehicles: vehicles, lines: lines, packItems: packItems, total: money(total) };
+    var text = 'Hola, ya pagué ' + roomName + '. ' + (seasonName ? ('Temporada ' + seasonName + '. ') : '') + 'Adultos y niños de 5 años en adelante: ' + adults + '. Niños menores de 5 años: ' + kids + '. Vehículos: ' + vehicles + '. ' + lines.join('. ') + (packItems.length ? '. Incluye: ' + packItems.map(function (item) { return '• ' + item; }).join(' ') : '') + '. Te envío el comprobante.';
     var num = currentBuy.getAttribute('data-wa') || '';
     if (proof) {
       proof.setAttribute('href', num ? ('https://wa.me/' + num + '?text=' + encodeURIComponent(text)) : '#contacto');
@@ -202,13 +259,17 @@
     if (!q) return '';
     var out = ['✅ Comprobante de pago enviado', q.product];
     if (q.room) {
-      out.push('Temporada: ' + q.season);
+      if (q.season) out.push('Temporada: ' + q.season);
       out.push('Adultos y niños de 5 años en adelante: ' + q.adults);
       out.push('Niños menores de 5 años: ' + q.kids);
       out.push('Vehículos: ' + q.vehicles);
     }
     out.push('Método de pago: ' + payMethod);
     (q.lines || []).forEach(function (line) { out.push(line); });
+    if (q.packItems && q.packItems.length) {
+      out.push('Paquete incluido:');
+      q.packItems.forEach(function (item) { out.push('• ' + item); });
+    }
     out.push('Comprobante: ' + url);
     return out.join('\n');
   }
@@ -371,26 +432,58 @@
   var userBox = document.getElementById('comment-user');
   var list = document.getElementById('comment-list');
   function commentMsg(form, text) { var p = form && form.querySelector('.comment-msg'); if (p) p.textContent = text || ''; }
+  function paintComments(box, items) {
+    if (!box) return;
+    box.textContent = '';
+    items.forEach(function (c) {
+      var art = document.createElement('article');
+      var name = document.createElement('h3');
+      name.className = 'comment-name';
+      name.textContent = c.name || '';
+      var meta = document.createElement('p');
+      meta.className = 'comment-meta';
+      var when = '';
+      try { when = c.date ? new Date(c.date).toLocaleString('es-EC') : ''; } catch (e) { when = ''; }
+      var stars = '★'.repeat(c.stars || 0) + '☆'.repeat(5 - (c.stars || 0));
+      meta.textContent = (when ? when + ' · ' : '') + stars;
+      var p = document.createElement('p');
+      p.className = 'comment-text';
+      p.textContent = c.text || '';
+      art.appendChild(name); art.appendChild(meta); art.appendChild(p); box.appendChild(art);
+    });
+  }
+  function fillAuthor(name) {
+    document.querySelectorAll('input[name="author"]').forEach(function (input) {
+      if (document.activeElement === input) return;
+      if (!input.value || input.getAttribute('data-prefilled') === '1') {
+        input.value = name || '';
+        input.setAttribute('data-prefilled', '1');
+      }
+    });
+  }
+  document.querySelectorAll('input[name="author"]').forEach(function (input) {
+    input.addEventListener('input', function () {
+      input.setAttribute('data-prefilled', input.value === (window.customerName || '') ? '1' : '0');
+    });
+  });
   function showComments(data) {
     var logged = !!(data && data.user);
     if (guest) guest.hidden = logged;
     if (userBox) userBox.hidden = !logged;
     var hello = document.getElementById('comment-hello');
     if (hello && logged) hello.textContent = data.user.name;
-    if (!list) return;
-    list.textContent = '';
     window.customerName = logged ? data.user.name : '';
-    (data.comments || []).forEach(function (c) {
-      var art = document.createElement('article');
-      var h = document.createElement('h3');
-      var stars = c.stars ? ' ' + '★'.repeat(c.stars) + '☆'.repeat(5 - c.stars) : '';
-      h.textContent = (c.name || '') + stars;
-      var when = document.createElement('p');
-      try { when.textContent = c.date ? new Date(c.date).toLocaleString('es-EC') : ''; } catch (e) { when.textContent = ''; }
-      var p = document.createElement('p');
-      p.textContent = c.text || '';
-      art.appendChild(h); art.appendChild(when); art.appendChild(p); list.appendChild(art);
+    var all = data.comments || [];
+    paintComments(list, all.filter(function (c) { return !c.section; }));
+    document.querySelectorAll('.mini-comments').forEach(function (block) {
+      var id = block.getAttribute('data-section');
+      var guestLink = block.querySelector('.mini-guest');
+      var form = block.querySelector('.mini-form');
+      if (guestLink) guestLink.hidden = logged;
+      if (form) form.hidden = !logged;
+      paintComments(block.querySelector('.mini-list'), all.filter(function (c) { return c.section === id; }));
     });
+    if (logged) fillAuthor(data.user.name);
   }
   function loadComments() {
     fetch('/api/comentarios', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(showComments).catch(function () {});
@@ -422,7 +515,29 @@
   if (postForm) postForm.addEventListener('submit', function (e) {
     e.preventDefault();
     var fd = new FormData(postForm);
-    commentPost('/api/comentarios', { text: fd.get('text'), stars: fd.get('stars') }).then(function () { postForm.reset(); commentMsg(postForm, 'Comentario publicado.'); loadComments(); }).catch(function (err) { commentMsg(postForm, err.message); });
+    commentPost('/api/comentarios', { name: fd.get('author'), text: fd.get('text'), stars: fd.get('stars') }).then(function () {
+      postForm.reset();
+      fillAuthor(window.customerName || '');
+      commentMsg(postForm, 'Comentario publicado.');
+      loadComments();
+    }).catch(function (err) { commentMsg(postForm, err.message); });
+  });
+  document.querySelectorAll('.mini-form').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var section = form.closest('.mini-comments').getAttribute('data-section');
+      var fd = new FormData(form);
+      commentPost('/api/comentarios', { name: fd.get('author'), text: fd.get('text'), stars: fd.get('stars'), section: section }).then(function () {
+        form.reset();
+        fillAuthor(window.customerName || '');
+        commentMsg(form, 'Comentario publicado.');
+        loadComments();
+      }).catch(function (err) { commentMsg(form, err.message); });
+    });
+  });
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('[data-open-register]')) return;
+    if (regForm) { regForm.hidden = false; if (logForm) logForm.hidden = true; }
   });
   var outBtn = document.getElementById('comment-logout');
   if (outBtn) outBtn.addEventListener('click', function () { commentPost('/api/comentarios/logout', {}).then(loadComments); });

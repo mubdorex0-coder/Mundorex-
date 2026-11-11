@@ -83,6 +83,69 @@
       "visible": true
     }
   ],
+  "lodging": [
+    {
+      "id": "familiares",
+      "title": "Habitaciones familiares",
+      "subtitle": "Matrimonial, cuádruple y para familias grandes. $10 temporada baja y $15 temporada alta por persona.",
+      "garageCapacity": { "label": "Garaje para 1 o 2 carros", "max": 2 },
+      "items": [
+        { "name": "Habitación matrimonial", "description": "Una cama matrimonial, ideal para parejas.", "pricingMode": "perPerson", "priceLow": "10", "priceHigh": "15", "ctaLabel": "Reservar", "available": true, "units": "", "garageCapacity": "" },
+        { "name": "Habitación cuádruple", "description": "Dos camas, capacidad para cuatro personas.", "pricingMode": "perPerson", "priceLow": "10", "priceHigh": "15", "ctaLabel": "Reservar", "available": true, "units": "", "garageCapacity": "" },
+        { "name": "Habitación para familias grandes", "description": "Espacio amplio para familias grandes, con capacidad para seis personas.", "pricingMode": "perPerson", "priceLow": "10", "priceHigh": "15", "ctaLabel": "Reservar", "available": true, "units": "", "garageCapacity": "" }
+      ]
+    },
+    {
+      "id": "depto4",
+      "title": "Departamentos para 4 personas",
+      "subtitle": "Departamento cómodo para 4 personas. $10 temporada baja y $15 temporada alta por persona.",
+      "garageCapacity": { "label": "Garaje para 1 o 2 carros", "max": 2 },
+      "items": [
+        { "name": "Departamento para 4 personas", "description": "Baño, sala, cocina, comedor y garaje para una estadía de 4 personas.", "pricingMode": "perPerson", "priceLow": "10", "priceHigh": "15", "ctaLabel": "Reservar", "available": true, "units": "", "garageCapacity": "" }
+      ]
+    },
+    {
+      "id": "depto8",
+      "title": "Departamentos para 8 personas",
+      "subtitle": "Departamento para grupos de 8 personas. $10 temporada baja y $15 temporada alta por persona.",
+      "garageCapacity": { "label": "Garaje para 2 carros", "max": 2 },
+      "items": [
+        { "name": "Departamento para 8 personas", "description": "Espacio con baño, sala, cocina, comedor y garaje para 8 personas.", "pricingMode": "perPerson", "priceLow": "10", "priceHigh": "15", "ctaLabel": "Reservar", "available": true, "units": "", "garageCapacity": "" }
+      ]
+    },
+    {
+      "id": "depto15",
+      "title": "Departamentos para 15 personas",
+      "subtitle": "Departamento amplio para grupos de 15 personas. $10 temporada baja y $15 temporada alta por persona.",
+      "garageCapacity": { "label": "Garaje para 3 carros", "max": 3 },
+      "items": [
+        { "name": "Departamento para 15 personas", "description": "Departamento grande con baño, sala, cocina, comedor y garaje para 15 personas.", "pricingMode": "perPerson", "priceLow": "10", "priceHigh": "15", "ctaLabel": "Reservar", "available": true, "units": "", "garageCapacity": "" }
+      ]
+    },
+    {
+      "id": "jacuzzi",
+      "title": "Departamento con jacuzzi",
+      "subtitle": "Estadía fija con paquete de visitas incluido.",
+      "garageCapacity": { "label": "Garaje para 1 carro", "max": 1 },
+      "items": [
+        {
+          "name": "Departamento con jacuzzi",
+          "description": "Estadía con piscina, jacuzzi y un paquete de visitas.",
+          "pricingMode": "fixed",
+          "stayPrice": "80",
+          "stayNote": "incluye piscina, jacuzzi, sala, cocina y comedor",
+          "packagePrice": "30",
+          "packageItems": ["Ruta de las Cascadas", "Pailón del Diablo", "Animal Park", "Laberinto del Dragón", "miradores nocturnos"],
+          "priceLow": "10",
+          "priceHigh": "15",
+          "ctaLabel": "Reservar",
+          "available": true,
+          "units": "",
+          "garageCapacity": ""
+        }
+      ]
+    }
+  ],
   "benefits": [
     { "icon": "📲", "title": "Reserva directa", "text": "Hablas directamente con nosotros por WhatsApp, sin intermediarios." },
     { "icon": "🧭", "title": "Todo en un solo lugar", "text": "Transporte turístico, hospedaje y departamentos para organizar tu viaje fácilmente." },

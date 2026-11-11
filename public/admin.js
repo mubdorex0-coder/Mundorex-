@@ -123,7 +123,7 @@
 
   /* ----- pestañas ----- */
   var TABS = [
-    ['general', 'General y encabezado', '⚙️'], ['servicios', 'Servicios', '🧭'], ['productos', 'Productos', '🛍️'],
+    ['general', 'General y encabezado', '⚙️'], ['servicios', 'Servicios', '🧭'], ['hospedaje', 'Hospedaje', '🛏️'], ['productos', 'Productos', '🛍️'],
     ['promociones', 'Promociones', '🎁'], ['beneficios', 'Beneficios', '⭐'], ['testimonios', 'Testimonios', '💬'], ['pagos', 'Métodos de pago', '💳'],
     ['redes', 'Redes sociales', '🔗'], ['comprobantes', 'Comprobantes', '🧾'], ['comentarios', 'Comentarios', '💬'], ['seguridad', 'Cambiar contraseña', '🔒']];
 
@@ -175,6 +175,73 @@
         out.push(card(sv.title || sv.id, kids, toggle('Mostrar en la página', sv, 'visible')));
       });
       return out;
+    },
+    hospedaje: function () {
+      if (!state.lodging) state.lodging = [];
+      var stay = (state.services || []).filter(function (s) { return s.id === 'hospedajes'; })[0] || {};
+      var wrap = h('div');
+      function draw() {
+        wrap.textContent = '';
+        if (stay.vehiclePrice == null || stay.vehiclePrice === '') stay.vehiclePrice = '5';
+        wrap.appendChild(card('Garaje', [field('Precio por carro', stay, 'vehiclePrice', { inputmode: 'decimal', max: 10, placeholder: '5', help: 'Se suma por cada carro en todas las secciones. Ejemplo: 5.' })]));
+        state.lodging.forEach(function (sec) {
+          if (!sec.items) sec.items = [];
+          if (!sec.garageCapacity || typeof sec.garageCapacity !== 'object') sec.garageCapacity = { label: '', max: '' };
+          var kids = [
+            field('Título de la sección', sec, 'title', { max: 80 }),
+            field('Subtítulo', sec, 'subtitle', { type: 'textarea', max: 300, wide: true }),
+            field('Texto del garaje', sec.garageCapacity, 'label', { max: 120, placeholder: 'Garaje para 1 o 2 carros' }),
+            field('Máximo de carros', sec.garageCapacity, 'max', { inputmode: 'numeric', max: 4, placeholder: 'Sin límite' })
+          ];
+          sec.items.forEach(function (r, i) {
+            if (r.available == null) r.available = true;
+            if (!r.packageItems) r.packageItems = [];
+            if (!r.garageCapacity || typeof r.garageCapacity !== 'object') r.garageCapacity = { label: '', max: '' };
+            var mode = h('select');
+            [['perPerson', 'Por persona (temporada)'], ['fixed', 'Precio fijo por estadía']].forEach(function (pair) {
+              mode.appendChild(h('option', { value: pair[0], text: pair[1] }));
+            });
+            mode.value = r.pricingMode === 'fixed' ? 'fixed' : 'perPerson';
+            mode.addEventListener('change', function () { r.pricingMode = mode.value; markDirty(); draw(); });
+            var pack = h('textarea', { rows: '6', maxlength: '800' });
+            pack.value = (r.packageItems || []).join('\n');
+            pack.addEventListener('input', function () {
+              r.packageItems = pack.value.split(/\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+              markDirty();
+            });
+            var block = [
+              field('Nombre', r, 'name', { max: 80 }),
+              field('Descripción', r, 'description', { max: 300, wide: true }),
+              h('label', { class: 'field' }, h('span', { text: 'Modo de precio' }), mode)
+            ];
+            if (r.pricingMode === 'fixed') {
+              block.push(field('Departamento ($)', r, 'stayPrice', { inputmode: 'decimal', max: 10, placeholder: '80' }));
+              block.push(field('Texto del departamento', r, 'stayNote', { max: 200, wide: true }));
+              block.push(field('Paquete incluido ($)', r, 'packagePrice', { inputmode: 'decimal', max: 10, placeholder: '30' }));
+              block.push(h('label', { class: 'field wide' }, h('span', { text: 'Lista del paquete (una visita por línea)' }), pack));
+            } else {
+              block.push(field('Temporada baja por persona', r, 'priceLow', { inputmode: 'decimal', max: 10, placeholder: '10' }));
+              block.push(field('Temporada alta por persona', r, 'priceHigh', { inputmode: 'decimal', max: 10, placeholder: '15' }));
+            }
+            block.push(field('Unidades (vacío = sin límite, 0 = agotada)', r, 'units', { inputmode: 'numeric', max: 6 }));
+            block.push(toggle('Disponible', r, 'available'));
+            block.push(field('Garaje de este alojamiento (opcional)', r.garageCapacity, 'label', { max: 120, help: 'Vacío: usa el garaje de la sección.' }));
+            block.push(field('Máximo de carros de este alojamiento', r.garageCapacity, 'max', { inputmode: 'numeric', max: 4 }));
+            block.push(field('Texto del botón', r, 'ctaLabel', { max: 40, placeholder: 'Reservar' }));
+            block.push(h('button', { type: 'button', class: 'btn small danger', text: 'Quitar', onclick: function () {
+              if (confirm('¿Quitar "' + (r.name || '') + '"?')) { sec.items.splice(i, 1); markDirty(); draw(); }
+            } }));
+            kids.push(h('div', { class: 'room-row' }, block));
+          });
+          kids.push(h('button', { type: 'button', class: 'btn small', text: '+ Agregar alojamiento', onclick: function () {
+            sec.items.push({ name: '', description: '', pricingMode: 'perPerson', priceLow: '10', priceHigh: '15', stayPrice: '', stayNote: '', packagePrice: '', packageItems: [], ctaLabel: 'Reservar', available: true, units: '', garageCapacity: { label: '', max: '' } });
+            markDirty(); draw();
+          } }));
+          wrap.appendChild(card(sec.title || sec.id, kids));
+        });
+      }
+      draw();
+      return [wrap];
     },
     productos: function () {
       var s = state.sections, wrap = h('div');
@@ -338,7 +405,7 @@
       if (sv.vehiclePrice == null || sv.vehiclePrice === '') sv.vehiclePrice = '5';
       wrap.appendChild(h('span', { text: 'Tipos de habitación' }));
       wrap.appendChild(field('Título de la lista', sv, 'roomsTitle', { max: 80 }));
-      wrap.appendChild(field('Precio por vehículo / parqueadero', sv, 'vehiclePrice', { inputmode: 'decimal', max: 10, placeholder: '5', help: 'Se suma por cada vehículo. No cambia el precio por persona. Ejemplo: 5.' }));
+      wrap.appendChild(field('Precio del garaje por carro', sv, 'vehiclePrice', { inputmode: 'decimal', max: 10, placeholder: '5', help: 'Se suma por cada carro. Ejemplo: 5.' }));
       sv.rooms.forEach(function (r, i) {
         if (r.available == null) r.available = true;
         wrap.appendChild(h('div', { class: 'room-row' },
