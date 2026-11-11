@@ -212,11 +212,11 @@ function sanitizeContent(c, errors) {
       finalCtaTitle: str(g.finalCtaTitle, 140), finalCtaText: str(g.finalCtaText, 400), finalCtaButton: str(g.finalCtaButton, 60),
     },
     sections: {},
-    services: [], benefits: [], products: [], testimonials: [],
+    services: [], benefits: [], products: [], testimonials: [], promotions: [],
     payments: { visible: bool(p.visible), cardFeePercent: feePercent(p.cardFeePercent), methods: [], banks: [] },
     social: {},
   };
-  ['servicesTitle', 'servicesSubtitle', 'benefitsTitle', 'benefitsSubtitle', 'productsTitle', 'productsSubtitle', 'testimonialsTitle', 'testimonialsNote', 'paymentsTitle', 'paymentsSubtitle', 'banksTitle', 'banksNote']
+  ['servicesTitle', 'servicesSubtitle', 'benefitsTitle', 'benefitsSubtitle', 'productsTitle', 'productsSubtitle', 'packagesTitle', 'packagesSubtitle', 'promosTitle', 'promosSubtitle', 'socialTitle', 'testimonialsTitle', 'testimonialsNote', 'paymentsTitle', 'paymentsSubtitle', 'banksTitle', 'banksNote']
     .forEach((k) => { out.sections[k] = str(s[k], 300); });
   const prevServices = arr(c.services, 3);
   ['chivas', 'hospedajes', 'departamentos'].forEach((id) => {
@@ -252,6 +252,7 @@ function sanitizeContent(c, errors) {
     };
   }).filter((pr) => pr.name);
   out.testimonials = arr(c.testimonials, 20).map((t) => ({ name: str(t && t.name, 80), place: str(t && t.place, 80), text: str(t && t.text, 500), example: bool(t && t.example) })).filter((t) => t.text);
+  out.promotions = arr(c.promotions, 30).map((p) => ({ title: str(p && p.title, 120), text: str(p && p.text, 400) })).filter((p) => p.title || p.text);
   out.payments.methods = arr(p.methods, 20).map((m) => ({ icon: ICONS[m && m.icon] ? m.icon : 'check', name: str(m && m.name, 60), note: str(m && m.note, 200) })).filter((m) => m.name);
   out.payments.banks = arr(p.banks, 30).map((b) => ({ name: str(b && b.name, 60), active: bool(b && b.active), accountNumber: str(b && b.accountNumber, 40).replace(/\D/g, '') })).filter((b) => b.name);
   Object.keys(SOCIAL_ICONS).forEach((k) => {
@@ -324,6 +325,18 @@ function renderPublic(c) {
   }).join('');
   const roomGrid = roomCards ? `<div class="room-grid" aria-label="Tipos de habitación">${roomCards}</div>` : '';
   const roomOptions = stayRooms.map((r, i) => `<option value="${i}" data-low="${esc(r.priceLow)}" data-high="${esc(r.priceHigh)}">${esc(r.name)}</option>`).join('');
+  const byId = (id) => c.services.find((x) => x.id === id && x.visible);
+  const chiva = byId('chivas');
+  const depto = byId('departamentos');
+  const packageCards = [
+    chiva ? `<article class="card package"><h3>${esc(chiva.emoji || '')} ${esc(chiva.title)}</h3><p>${esc(chiva.description)}</p><a class="btn btn-primary" href="#svc-${esc(chiva.id)}">${esc(chiva.ctaLabel || 'Ver tour')}</a></article>` : '',
+    ...stayRooms.map((r, i) => {
+      const low = unitLabel(r.priceLow);
+      const high = unitLabel(r.priceHigh);
+      return `<article class="card package"><h3>${esc(r.name)}</h3>${r.description ? `<p>${esc(r.description)}</p>` : ''}<p class="room-rate">${low ? `Temporada baja: ${esc(low)} por persona` : 'Temporada baja: Consultar precio'}</p><p class="room-rate">${high ? `Temporada alta: ${esc(high)} por persona` : 'Temporada alta: Consultar precio'}</p><button type="button" class="btn btn-accent buy-open" data-room="1" data-room-index="${i}" data-name="${esc(r.name)}" data-price="${esc([low && `Temporada baja: ${low} por persona`, high && `Temporada alta: ${high} por persona`].filter(Boolean).join(' · '))}" data-vehicle="${esc(String(vehiclePrice))}" data-fee-pct="${esc(String(feePct))}" data-wa="${esc(wa)}">${esc(r.ctaLabel || 'Reservar')}</button></article>`;
+    }),
+    depto ? `<article class="card package"><h3>${esc(depto.emoji || '')} ${esc(depto.title)}</h3><p>${esc(depto.description)}</p><a class="btn btn-primary" href="#svc-${esc(depto.id)}">${esc(depto.ctaLabel || 'Ver departamento')}</a></article>` : '',
+  ].filter(Boolean).join('');
   const svcHtml = services.map((sv, i) => {
     const lodgingPick = sv.id === 'departamentos'
       ? `<button type="button" class="btn btn-primary buy-open" data-room="1" data-room-pick="1" data-name="${esc(sv.title)}" data-price="" data-vehicle="${esc(String(vehiclePrice))}" data-fee-pct="${esc(String(feePct))}" data-wa="${esc(wa)}">${esc(sv.ctaLabel || 'Reservar')}</button>`
@@ -431,8 +444,8 @@ function renderPublic(c) {
 <header class="nav"><div class="wrap nav-in">
   <a class="brand" href="#inicio"><span class="brand-mark">⛰</span>${esc(g.businessName)}</a>
   <input type="checkbox" id="menu" class="menu-cb" aria-label="Abrir menú"><label for="menu" class="menu-btn" aria-hidden="true"><span></span><span></span><span></span></label>
-  <nav class="links"><a href="#servicios">Servicios</a><a href="#productos">Productos</a>${c.payments.visible ? '<a href="#pagos">Pagos</a>' : ''}<a href="#contacto">Contacto</a>
-  <a class="btn btn-wa btn-sm" href="${esc(waLink(wa, g.whatsappMessage))}"${wa ? EXT : ''}>WhatsApp</a>
+  <nav class="links" aria-label="Secciones"><a href="#inicio">Inicio</a><a href="#catalogo">Catálogo</a><a href="#paquetes">Paquetes</a><a href="#promociones">Promociones</a><a href="#redes">Redes sociales</a>
+  <a class="btn btn-wa btn-sm" href="${esc(wa ? `https://wa.me/${wa}` : '#contacto')}"${wa ? EXT : ''}>Escríbenos por WhatsApp</a>
   <a class="btn btn-login btn-sm" href="/admin">Iniciar sesión</a></nav>
 </div></header>
 <main id="inicio">
@@ -455,9 +468,19 @@ ${c.benefits.length ? `<section class="section alt" id="beneficios"><div class="
   <div class="grid g4">${c.benefits.map((b) => `<div class="card benefit"><span class="b-ico">${esc(b.icon)}</span><h3>${esc(b.title)}</h3><p>${esc(b.text)}</p></div>`).join('')}</div>
 </div></section>` : ''}
 
-<section class="section" id="productos"><div class="wrap">
+<section class="section" id="paquetes"><div class="wrap">
+  <div class="sec-head"><h2>${esc(s.packagesTitle || 'Paquetes')}</h2><p>${esc(s.packagesSubtitle || '')}</p></div>
+  ${packageCards ? `<div class="grid g3">${packageCards}</div>` : '<p class="empty">Pronto agregaremos paquetes.</p>'}
+</div></section>
+
+<section class="section" id="catalogo"><div class="wrap">
   <div class="sec-head"><h2>${esc(s.productsTitle)}</h2><p>${esc(s.productsSubtitle)}</p></div>
   ${products ? `<div class="grid g3">${products}</div>` : '<p class="empty">Pronto agregaremos productos.</p>'}
+</div></section>
+
+<section class="section alt" id="promociones"><div class="wrap">
+  <div class="sec-head"><h2>${esc(s.promosTitle || 'Promociones')}</h2><p>${esc(s.promosSubtitle || '')}</p></div>
+  ${(c.promotions || []).length ? `<div class="grid g3">${c.promotions.map((p) => `<article class="card promo"><h3>${esc(p.title)}</h3>${p.text ? `<p>${esc(p.text)}</p>` : ''}</article>`).join('')}</div>` : '<p class="empty">No hay promociones por ahora.</p>'}
 </div></section>
 
 ${c.testimonials.length ? `<section class="section alt" id="testimonios"><div class="wrap">
@@ -475,6 +498,10 @@ ${c.payments.visible ? `<section class="section" id="pagos"><div class="wrap">
   <h2>${esc(g.finalCtaTitle)}</h2><p>${esc(g.finalCtaText)}</p>
   <a class="btn btn-wa btn-lg" href="${esc(waLink(wa, g.whatsappMessage))}"${wa ? EXT : ''}>${svgIcon(SOCIAL_ICONS.whatsapp.svg)} ${esc(g.finalCtaButton || 'Escríbenos')}</a>
 </div></section>
+<section class="section" id="redes"><div class="wrap">
+  <div class="sec-head"><h2>${esc(s.socialTitle || 'Redes sociales')}</h2><p>Síguenos y escríbenos.</p></div>
+  ${socials ? `<div class="socials socials-block">${socials}</div>` : '<p class="empty">Pronto publicaremos nuestras redes.</p>'}
+</div></section>
 </main>
 <footer class="footer" id="contacto"><div class="wrap foot-in">
   <div><div class="brand foot-brand"><span class="brand-mark">⛰</span>${esc(g.businessName)}</div><p>${esc(g.footerText)}</p>${socials ? `<div class="socials">${socials}</div>` : ''}</div>
@@ -484,7 +511,7 @@ ${c.payments.visible ? `<section class="section" id="pagos"><div class="wrap">
     ${g.email ? `<li>Correo: <a href="mailto:${esc(g.email)}">${esc(g.email)}</a></li>` : ''}
     ${g.address ? `<li>Dirección: ${esc(g.address)}</li>` : ''}
   </ul></div>
-  <div><h4>Enlaces</h4><ul class="contact"><li><a href="#servicios">Servicios</a></li><li><a href="#productos">Productos</a></li>${c.payments.visible ? '<li><a href="#pagos">Métodos de pago</a></li>' : ''}<li><a class="foot-login" href="/admin">Iniciar sesión</a></li></ul></div>
+  <div><h4>Enlaces</h4><ul class="contact"><li><a href="#inicio">Inicio</a></li><li><a href="#catalogo">Catálogo</a></li><li><a href="#paquetes">Paquetes</a></li><li><a href="#promociones">Promociones</a></li><li><a href="#redes">Redes sociales</a></li><li><a class="foot-login" href="/admin">Iniciar sesión</a></li></ul></div>
 </div><div class="wrap copy">© ${new Date().getFullYear()} ${esc(g.businessName)}. Todos los derechos reservados.</div></footer>
 ${wa ? `<a class="wa-float" href="${esc(waLink(wa, g.whatsappMessage))}"${EXT} aria-label="Escríbenos por WhatsApp">${svgIcon(SOCIAL_ICONS.whatsapp.svg)}<span>WhatsApp</span></a>` : ''}
 ${payModal}

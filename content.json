@@ -25,6 +25,11 @@
     "benefitsSubtitle": "Hacemos que organizar tu viaje sea fácil y cercano.",
     "productsTitle": "Catálogo de productos",
     "productsSubtitle": "Llévate un recuerdo de Baños o complementa tu viaje.",
+    "packagesTitle": "Paquetes",
+    "packagesSubtitle": "Tours, habitaciones y departamentos para armar tu visita a Baños.",
+    "promosTitle": "Promociones",
+    "promosSubtitle": "Ofertas vigentes. Las editamos desde el panel.",
+    "socialTitle": "Redes sociales",
     "testimonialsTitle": "Lo que dicen nuestros clientes",
     "testimonialsNote": "Testimonios de ejemplo: reemplázalos por opiniones reales de tus clientes desde el panel.",
     "paymentsTitle": "Métodos de pago",
@@ -84,6 +89,9 @@
     { "id": "a1b2c3d4e5f6", "name": "Producto de ejemplo 1", "description": "Describe aquí tu producto en una o dos líneas.", "price": "10.00", "currency": "USD", "image": "", "buyLabel": "Comprar", "buyLink": "", "soldOut": false },
     { "id": "b2c3d4e5f6a1", "name": "Producto de ejemplo 2", "description": "Cambia la foto, el nombre y el precio desde el panel.", "price": "15.00", "currency": "USD", "image": "", "buyLabel": "Comprar", "buyLink": "", "soldOut": false },
     { "id": "c3d4e5f6a1b2", "name": "Producto de ejemplo 3", "description": "Puedes marcarlo como agotado cuando no tengas stock.", "price": "20.00", "currency": "USD", "image": "", "buyLabel": "Comprar", "buyLink": "", "soldOut": false }
+  ],
+  "promotions": [
+    { "title": "Niños menores de 5 años no pagan", "text": "En hospedaje, los niños menores de 5 años no pagan. Desde los 5 años pagan como adulto." }
   ],
   "testimonials": [
     { "name": "[Nombre del cliente]", "place": "[Ciudad]", "text": "Ejemplo de testimonio: aquí va la opinión real de un cliente sobre su paseo en chiva.", "example": true },

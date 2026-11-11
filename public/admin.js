@@ -124,7 +124,7 @@
   /* ----- pestañas ----- */
   var TABS = [
     ['general', 'General y encabezado', '⚙️'], ['servicios', 'Servicios', '🧭'], ['productos', 'Productos', '🛍️'],
-    ['beneficios', 'Beneficios', '⭐'], ['testimonios', 'Testimonios', '💬'], ['pagos', 'Métodos de pago', '💳'],
+    ['promociones', 'Promociones', '🎁'], ['beneficios', 'Beneficios', '⭐'], ['testimonios', 'Testimonios', '💬'], ['pagos', 'Métodos de pago', '💳'],
     ['redes', 'Redes sociales', '🔗'], ['seguridad', 'Cambiar contraseña', '🔒']];
 
   var views = {
@@ -155,7 +155,8 @@
     },
     servicios: function () {
       var s = state.sections;
-      var out = [card('Encabezado de la sección', [field('Título', s, 'servicesTitle'), field('Subtítulo', s, 'servicesSubtitle', { wide: true })])];
+      var out = [card('Encabezado de la sección', [field('Título', s, 'servicesTitle'), field('Subtítulo', s, 'servicesSubtitle', { wide: true })]),
+        card('Paquetes', [field('Título', s, 'packagesTitle'), field('Subtítulo', s, 'packagesSubtitle', { wide: true, help: 'Los paquetes se arman con los tours, las habitaciones y los departamentos.' })])];
       state.services.forEach(function (sv) {
         var kids = [
           field('Título', sv, 'title', { max: 100 }),
@@ -196,6 +197,14 @@
         } }));
       }
       draw(); return [wrap];
+    },
+    promociones: function () {
+      var s = state.sections;
+      if (!state.promotions) state.promotions = [];
+      return [card('Encabezado', [field('Título', s, 'promosTitle'), field('Subtítulo', s, 'promosSubtitle', { wide: true })]),
+        listSection(state.promotions, 'Promoción', function (p) {
+          return [field('Título', p, 'title', { max: 120 }), field('Texto', p, 'text', { type: 'textarea', max: 400, wide: true })];
+        }, function () { return { title: '', text: '' }; }, 30)];
     },
     beneficios: function () {
       var s = state.sections;
