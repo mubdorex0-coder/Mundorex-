@@ -1,4 +1,4 @@
-# Página de turismo en Baños + panel de administración
+# Página de Baños Turismo + panel de administración
 
 Página web para tu negocio de turismo en Baños de Agua Santa: Chivas en Baños, Hospedajes (con tipos de habitación), Departamentos cómodos, catálogo de productos, métodos de pago con bancos, testimonios y redes sociales. Todo se edita desde un panel protegido con usuario y contraseña, sin tocar código.
 

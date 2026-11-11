@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Página de turismo en Baños + panel de administración.
+ * Página de Baños Turismo + panel de administración.
  * Solo usa módulos incluidos en Node.js (sin npm). Ejecutar: node server.js
  */
 const http = require('http');
@@ -248,6 +248,7 @@ function renderPublic(c) {
   const g = c.general, s = c.sections, wa = g.whatsapp;
   const phoneDigits = String(g.phone || '').replace(/\D/g, '');
   const telHref = phoneDigits.startsWith('0') ? '+593' + phoneDigits.slice(1) : phoneDigits;
+  const pageTitle = g.heroTitle === g.businessName ? g.businessName : `${g.businessName} · ${g.heroTitle}`;
   const services = c.services.filter((x) => x.visible);
   const svcHtml = services.map((sv, i) => `
   <article class="service ${i % 2 ? 'rev' : ''}" id="svc-${esc(sv.id)}">
@@ -277,7 +278,7 @@ function renderPublic(c) {
   const heroStyle = g.heroImage ? ` style="--hero-img:url('${esc(g.heroImage)}')"` : '';
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(g.businessName)} · ${esc(g.heroTitle)}</title>
+<title>${esc(pageTitle)}</title>
 <meta name="description" content="${esc(g.heroSubtitle)}">
 <link rel="stylesheet" href="/style.css">
 <style>:root{--primary:${g.primaryColor};--accent:${g.accentColor}}</style>
