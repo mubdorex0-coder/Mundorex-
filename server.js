@@ -403,6 +403,7 @@ function renderPublic(c) {
   <div class="pay-dialog" role="dialog" aria-modal="true" aria-labelledby="pay-title pay-price" tabindex="-1">
     <button type="button" class="pay-x" data-close-modal aria-label="Cerrar">×</button>
     <h2 id="pay-title"></h2>
+    <p id="pay-hello" class="pay-age-note" hidden></p>
     <p class="pay-price" id="pay-price"></p>
     <div id="pay-room" hidden>
       <label class="pay-field">Tipo de habitación
@@ -476,6 +477,42 @@ function renderPublic(c) {
   <p class="visit-pill">👀 ${formatVisits(visitCount)} visitas</p>
 </div><svg class="hero-mtn" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 120V70l120-30 140 45 170-70 160 60 130-40 200 55 160-75 180 70 180-35v100z"/></svg></section>
 
+<section class="section" id="comentarios"><div class="wrap">
+  <div class="sec-head"><h2>Comentarios</h2><p>Regístrate para reservar paquetes y dejar tu comentario. Reservar también se puede sin cuenta.</p></div>
+  <div id="comment-guest" class="comment-auth">
+    <button type="button" class="btn btn-primary" id="comment-register-btn">Regístrate</button>
+    <button type="button" class="btn btn-login" id="comment-login-btn">Iniciar sesión</button>
+    <form id="comment-register" class="comment-form" hidden>
+      <label>Nombre<input name="name" required minlength="2" maxlength="80" autocomplete="name"></label>
+      <label>Usuario <small>(o deja el correo)</small><input name="username" maxlength="40" autocomplete="username" autocapitalize="none"></label>
+      <label>Correo <small>(o deja el usuario)</small><input name="email" type="email" maxlength="120" autocomplete="email"></label>
+      <label>Contraseña<input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+      <label>Confirmar contraseña<input name="confirm" type="password" required minlength="8" autocomplete="new-password"></label>
+      <button class="btn btn-primary" type="submit">Regístrate</button>
+      <p class="comment-msg" role="status"></p>
+    </form>
+    <form id="comment-login" class="comment-form" hidden>
+      <label>Usuario o correo<input name="login" required maxlength="120" autocomplete="username" autocapitalize="none"></label>
+      <label>Contraseña<input name="password" type="password" required autocomplete="current-password"></label>
+      <button class="btn btn-primary" type="submit">Iniciar sesión</button>
+      <p class="comment-msg" role="status"></p>
+    </form>
+  </div>
+  <div id="comment-user" class="comment-auth" hidden>
+    <p>Hola, <strong id="comment-hello"></strong></p>
+    <form id="comment-form" class="comment-form">
+      <label>Tu comentario<textarea name="text" required maxlength="500" rows="3"></textarea></label>
+      <label>Estrellas <small>(opcional)</small>
+        <select name="stars"><option value="">Sin estrellas</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+      </label>
+      <button class="btn btn-accent" type="submit">Publicar</button>
+      <p class="comment-msg" role="status"></p>
+    </form>
+    <button type="button" class="btn btn-login" id="comment-logout">Cerrar sesión</button>
+  </div>
+  <div id="comment-list" class="comment-list"></div>
+</div></section>
+
 <section class="section" id="servicios"><div class="wrap">
   <div class="sec-head"><h2>${esc(s.servicesTitle)}</h2><p>${esc(s.servicesSubtitle)}</p></div>
   ${svcHtml}
@@ -515,36 +552,6 @@ ${c.payments.visible ? `<section class="section" id="pagos"><div class="wrap">
 <section class="final-cta"><div class="wrap">
   <h2>${esc(g.finalCtaTitle)}</h2><p>${esc(g.finalCtaText)}</p>
   <a class="btn btn-wa btn-lg" href="${esc(waLink(wa, g.whatsappMessage))}"${wa ? EXT : ''}>${svgIcon(SOCIAL_ICONS.whatsapp.svg)} ${esc(g.finalCtaButton || 'Escríbenos')}</a>
-</div></section>
-<section class="section" id="comentarios"><div class="wrap">
-  <div class="sec-head"><h2>Comentarios</h2></div>
-  <div id="comment-guest" class="comment-auth">
-    <button type="button" class="btn btn-primary" id="comment-register-btn">Regístrate</button>
-    <button type="button" class="btn btn-login" id="comment-login-btn">Iniciar sesión</button>
-    <form id="comment-register" class="comment-form" hidden>
-      <label>Nombre<input name="name" required minlength="2" maxlength="80" autocomplete="name"></label>
-      <label>Correo<input name="email" type="email" required maxlength="120" autocomplete="email"></label>
-      <label>Contraseña<input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
-      <button class="btn btn-primary" type="submit">Regístrate</button>
-      <p class="comment-msg" role="status"></p>
-    </form>
-    <form id="comment-login" class="comment-form" hidden>
-      <label>Correo<input name="email" type="email" required maxlength="120" autocomplete="email"></label>
-      <label>Contraseña<input name="password" type="password" required autocomplete="current-password"></label>
-      <button class="btn btn-primary" type="submit">Iniciar sesión</button>
-      <p class="comment-msg" role="status"></p>
-    </form>
-  </div>
-  <div id="comment-user" class="comment-auth" hidden>
-    <p>Hola, <strong id="comment-hello"></strong></p>
-    <form id="comment-form" class="comment-form">
-      <label>Tu comentario<textarea name="text" required maxlength="500" rows="3"></textarea></label>
-      <button class="btn btn-accent" type="submit">Publicar</button>
-      <p class="comment-msg" role="status"></p>
-    </form>
-    <button type="button" class="btn btn-login" id="comment-logout">Cerrar sesión</button>
-  </div>
-  <div id="comment-list" class="comment-list"></div>
 </div></section>
 <section class="section" id="redes"><div class="wrap">
   <div class="sec-head"><h2>${esc(s.socialTitle || 'Redes sociales')}</h2><p>Síguenos y escríbenos.</p></div>
@@ -648,6 +655,16 @@ function customerFromReq(req) {
   const s = customerSessions.get(t);
   if (!s || s.exp < Date.now()) { customerSessions.delete(t); return null; }
   return readCustomers().find((c) => c.id === s.id) || null;
+}
+function ownerUsername() {
+  try { return authExists() ? String(readAuth().username || '').trim().toLowerCase() : ''; } catch { return ''; }
+}
+function reservedCustomerName(user) {
+  const u = String(user || '').trim().toLowerCase();
+  if (!u) return false;
+  if (u === 'admin') return true;
+  const owner = ownerUsername();
+  return !!owner && u === owner;
 }
 function customerCookie(req, token) { return cookie(req, 'cid', token, token ? SESSION_MS / 1000 : 0); }
 const RECEIPTS_FILE = path.join(ROOT, 'comprobantes.json');
@@ -849,9 +866,10 @@ async function handle(req, res) {
     addReceipt({ id: rand(8), date: new Date().toISOString(), product, total, method, url });
     return sendJson(res, 200, { ok: true, url });
   }
+  if (p === '/cuenta' && m === 'GET') return redirect(res, '/#comentarios');
   if (p === '/api/comentarios' && m === 'GET') {
     const me = customerFromReq(req);
-    const comments = readComments().map((c) => ({ name: c.name, text: c.text, date: c.date }));
+    const comments = readComments().map((c) => ({ name: c.name, text: c.text, stars: c.stars || 0, date: c.date }));
     return sendJson(res, 200, { comments, user: me ? { name: me.name } : null });
   }
   if (p === '/api/comentarios/registro' && m === 'POST') {
@@ -859,13 +877,20 @@ async function handle(req, res) {
     const body = await parseBody(req);
     const name = str(body && body.name, 80);
     const email = str(body && body.email, 120).toLowerCase();
+    const username = str(body && body.username, 40).toLowerCase().replace(/[^a-z0-9._-]/g, '');
     const pw = String(body && body.password || '');
-    if (name.length < 2 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || pw.length < 8) return sendJson(res, 400, { error: 'Revisa tu nombre, correo y una contraseña de al menos 8 caracteres.' });
+    const confirm = String(body && body.confirm || '');
+    if (name.length < 2) return sendJson(res, 400, { error: 'Escribe tu nombre.' });
+    if (!email && username.length < 3) return sendJson(res, 400, { error: 'Indica un usuario o un correo.' });
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return sendJson(res, 400, { error: 'El correo no es válido.' });
+    if (username && username.length < 3) return sendJson(res, 400, { error: 'El usuario debe tener al menos 3 caracteres.' });
+    if (reservedCustomerName(username) || reservedCustomerName(email.split('@')[0])) return sendJson(res, 400, { error: 'Ese usuario no está disponible.' });
+    if (pw.length < 8 || pw !== confirm) return sendJson(res, 400, { error: 'La contraseña debe tener al menos 8 caracteres y coincidir con la confirmación.' });
     const customers = readCustomers();
-    if (customers.some((c) => c.email === email)) return sendJson(res, 400, { error: 'Ese correo ya está registrado. Inicia sesión.' });
+    if ((email && customers.some((c) => c.email === email)) || (username && customers.some((c) => c.username === username))) return sendJson(res, 400, { error: 'Esa cuenta ya está registrada. Inicia sesión.' });
     const h = await makeHash(pw);
     const id = rand(8);
-    customers.push({ id, name, email, salt: h.salt, hash: h.hash, created: new Date().toISOString() });
+    customers.push({ id, name, email, username, salt: h.salt, hash: h.hash, created: new Date().toISOString() });
     writeJsonAtomic(CUSTOMERS_FILE, customers);
     const token = rand(32);
     customerSessions.set(token, { id, exp: Date.now() + SESSION_MS });
@@ -874,14 +899,14 @@ async function handle(req, res) {
   if (p === '/api/comentarios/login' && m === 'POST') {
     if (!sameOrigin(req)) return sendJson(res, 403, { error: 'Origen no permitido.' });
     const body = await parseBody(req);
-    const email = str(body && body.email, 120).toLowerCase();
-    const user = readCustomers().find((c) => c.email === email);
+    const login = str(body && body.login, 120).toLowerCase();
+    const user = readCustomers().find((c) => c.email === login || c.username === login);
     let ok = false;
     if (user) {
       const k = await scrypt(String(body && body.password || '').slice(0, 200), user.salt);
       ok = crypto.timingSafeEqual(k, Buffer.from(user.hash, 'hex'));
     }
-    if (!ok) return sendJson(res, 400, { error: 'Correo o contraseña incorrectos.' });
+    if (!ok) return sendJson(res, 400, { error: 'Usuario o contraseña incorrectos.' });
     const token = rand(32);
     customerSessions.set(token, { id: user.id, exp: Date.now() + SESSION_MS });
     return sendJson(res, 200, { ok: true, name: user.name }, { 'Set-Cookie': customerCookie(req, token) });
@@ -897,9 +922,10 @@ async function handle(req, res) {
     if (!me) return sendJson(res, 401, { error: 'Inicia sesión para comentar.' });
     const body = await parseBody(req);
     const text = str(body && body.text, 500);
+    const stars = Math.round(Number(body && body.stars));
     if (text.length < 2) return sendJson(res, 400, { error: 'Escribe un comentario.' });
     const comments = readComments();
-    comments.unshift({ id: rand(8), name: me.name, text, date: new Date().toISOString() });
+    comments.unshift({ id: rand(8), name: me.name, text, stars: stars >= 1 && stars <= 5 ? stars : 0, date: new Date().toISOString() });
     writeJsonAtomic(COMMENTS_FILE, comments.slice(0, 200));
     return sendJson(res, 200, { ok: true });
   }
@@ -957,6 +983,7 @@ async function handle(req, res) {
       return sendJson(res, 200, { content: sanitizeContent(readContent(), []), visits: visitCount, icons: Object.fromEntries(Object.entries(ICONS).map(([k, v]) => [k, v.label])), iconSvg: Object.fromEntries(Object.entries(ICONS).map(([k, v]) => [k, v.svg])) });
     }
     if (m === 'GET' && p === '/admin/api/comprobantes') return sendJson(res, 200, { receipts: readReceipts() });
+    if (m === 'GET' && p === '/admin/api/comentarios') return sendJson(res, 200, { comments: readComments() });
     if (m !== 'POST') return sendJson(res, 405, { error: 'Método no permitido' });
     if (!sameOrigin(req) || !safeEqual(req.headers['x-csrf-token'] || '', sess.csrf)) return sendJson(res, 403, { error: 'Token de seguridad inválido. Recarga la página.' });
 
@@ -984,6 +1011,12 @@ async function handle(req, res) {
       const name = rand(16) + '.' + ext;
       fs.writeFileSync(path.join(UPLOADS, name), buf, { flag: 'wx' });
       return sendJson(res, 200, { ok: true, url: '/uploads/' + name });
+    }
+    if (p === '/admin/api/comentarios/delete') {
+      const body = await parseBody(req);
+      const id = str(body && body.id, 40);
+      writeJsonAtomic(COMMENTS_FILE, readComments().filter((c) => c.id !== id));
+      return sendJson(res, 200, { ok: true });
     }
     if (p === '/admin/api/password') {
       const body = await parseBody(req);

@@ -272,6 +272,8 @@
     lastFocus = btn;
     currentBuy = btn;
     if (title) title.textContent = btn.getAttribute('data-name') || '';
+    var hello = document.getElementById('pay-hello');
+    if (hello) { hello.textContent = window.customerName ? ('Hola, ' + window.customerName) : ''; hello.hidden = !window.customerName; }
     if (price) price.textContent = btn.getAttribute('data-price') || '';
     resetReceipt();
     resetRoom();
@@ -369,13 +371,17 @@
     if (hello && logged) hello.textContent = data.user.name;
     if (!list) return;
     list.textContent = '';
+    window.customerName = logged ? data.user.name : '';
     (data.comments || []).forEach(function (c) {
       var art = document.createElement('article');
       var h = document.createElement('h3');
-      h.textContent = c.name || '';
+      var stars = c.stars ? ' ' + '★'.repeat(c.stars) + '☆'.repeat(5 - c.stars) : '';
+      h.textContent = (c.name || '') + stars;
+      var when = document.createElement('p');
+      try { when.textContent = c.date ? new Date(c.date).toLocaleString('es-EC') : ''; } catch (e) { when.textContent = ''; }
       var p = document.createElement('p');
       p.textContent = c.text || '';
-      art.appendChild(h); art.appendChild(p); list.appendChild(art);
+      art.appendChild(h); art.appendChild(when); art.appendChild(p); list.appendChild(art);
     });
   }
   function loadComments() {
@@ -394,20 +400,21 @@
   if (regForm) regForm.addEventListener('submit', function (e) {
     e.preventDefault();
     var fd = new FormData(regForm);
-    commentPost('/api/comentarios/registro', { name: fd.get('name'), email: fd.get('email'), password: fd.get('password') })
+    if (fd.get('password') !== fd.get('confirm')) { commentMsg(regForm, 'La contraseña y la confirmación no coinciden.'); return; }
+    commentPost('/api/comentarios/registro', { name: fd.get('name'), username: fd.get('username'), email: fd.get('email'), password: fd.get('password'), confirm: fd.get('confirm') })
       .then(function () { commentMsg(regForm, ''); loadComments(); }).catch(function (err) { commentMsg(regForm, err.message); });
   });
   if (logForm) logForm.addEventListener('submit', function (e) {
     e.preventDefault();
     var fd = new FormData(logForm);
-    commentPost('/api/comentarios/login', { email: fd.get('email'), password: fd.get('password') })
+    commentPost('/api/comentarios/login', { login: fd.get('login'), password: fd.get('password') })
       .then(function () { commentMsg(logForm, ''); loadComments(); }).catch(function (err) { commentMsg(logForm, err.message); });
   });
   var postForm = document.getElementById('comment-form');
   if (postForm) postForm.addEventListener('submit', function (e) {
     e.preventDefault();
     var fd = new FormData(postForm);
-    commentPost('/api/comentarios', { text: fd.get('text') }).then(function () { postForm.reset(); commentMsg(postForm, 'Comentario publicado.'); loadComments(); }).catch(function (err) { commentMsg(postForm, err.message); });
+    commentPost('/api/comentarios', { text: fd.get('text'), stars: fd.get('stars') }).then(function () { postForm.reset(); commentMsg(postForm, 'Comentario publicado.'); loadComments(); }).catch(function (err) { commentMsg(postForm, err.message); });
   });
   var outBtn = document.getElementById('comment-logout');
   if (outBtn) outBtn.addEventListener('click', function () { commentPost('/api/comentarios/logout', {}).then(loadComments); });

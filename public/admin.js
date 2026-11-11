@@ -125,7 +125,7 @@
   var TABS = [
     ['general', 'General y encabezado', '⚙️'], ['servicios', 'Servicios', '🧭'], ['productos', 'Productos', '🛍️'],
     ['promociones', 'Promociones', '🎁'], ['beneficios', 'Beneficios', '⭐'], ['testimonios', 'Testimonios', '💬'], ['pagos', 'Métodos de pago', '💳'],
-    ['redes', 'Redes sociales', '🔗'], ['comprobantes', 'Comprobantes', '🧾'], ['seguridad', 'Cambiar contraseña', '🔒']];
+    ['redes', 'Redes sociales', '🔗'], ['comprobantes', 'Comprobantes', '🧾'], ['comentarios', 'Comentarios', '💬'], ['seguridad', 'Cambiar contraseña', '🔒']];
 
   var views = {
     general: function () {
@@ -256,6 +256,28 @@
         wrap.appendChild(bcard);
       }
       draw(); return [wrap];
+    },
+    comentarios: function () {
+      var wrap = h('div');
+      function draw(rows) {
+        wrap.textContent = '';
+        if (!rows.length) { wrap.appendChild(h('p', { class: 'muted', text: 'Todavía no hay comentarios.' })); return; }
+        rows.forEach(function (c) {
+          var when = '';
+          try { when = c.date ? new Date(c.date).toLocaleString('es-EC') : ''; } catch (e) { when = c.date || ''; }
+          wrap.appendChild(card((c.name || 'Cliente') + (c.stars ? ' · ' + c.stars + '★' : ''), [
+            h('p', { text: when }),
+            h('p', { text: c.text || '' }),
+            h('button', { type: 'button', class: 'btn small danger', text: 'Eliminar', onclick: function () {
+              if (!confirm('¿Eliminar este comentario?')) return;
+              api('/admin/api/comentarios/delete', { id: c.id }).then(function () { api('/admin/api/comentarios').then(function (j) { draw(j.comments || []); }); }).catch(function (err) { toast(err.message); });
+            } })
+          ]));
+        });
+      }
+      wrap.appendChild(h('p', { class: 'muted', text: 'Cargando comentarios…' }));
+      api('/admin/api/comentarios').then(function (j) { draw(j.comments || []); }).catch(function (e) { wrap.textContent = e.message; });
+      return [wrap];
     },
     comprobantes: function () {
       var wrap = h('div');
