@@ -188,7 +188,7 @@ function sanitizeContent(c, errors) {
       businessName: str(g.businessName, 80), heroEyebrow: str(g.heroEyebrow, 120), heroTitle: str(g.heroTitle, 140),
       heroSubtitle: str(g.heroSubtitle, 400), heroCta: str(g.heroCta, 60), heroImage: img(g.heroImage),
       whatsapp: digits(g.whatsapp), whatsappMessage: str(g.whatsappMessage, 300),
-      email: str(g.email, 120), address: str(g.address, 200), footerText: str(g.footerText, 300),
+      email: str(g.email, 120), phone: str(g.phone, 40), address: str(g.address, 200), footerText: str(g.footerText, 300),
       primaryColor: color(g.primaryColor, '#0e7c66'), accentColor: color(g.accentColor, '#f59e0b'),
       finalCtaTitle: str(g.finalCtaTitle, 140), finalCtaText: str(g.finalCtaText, 400), finalCtaButton: str(g.finalCtaButton, 60),
     },
@@ -246,6 +246,8 @@ const fmtPrice = (p, cur) => (p ? (cur === 'USD' ? `$${Number(p).toFixed(2)} USD
 const EXT = ' target="_blank" rel="noopener noreferrer"';
 function renderPublic(c) {
   const g = c.general, s = c.sections, wa = g.whatsapp;
+  const phoneDigits = String(g.phone || '').replace(/\D/g, '');
+  const telHref = phoneDigits.startsWith('0') ? '+593' + phoneDigits.slice(1) : phoneDigits;
   const services = c.services.filter((x) => x.visible);
   const svcHtml = services.map((sv, i) => `
   <article class="service ${i % 2 ? 'rev' : ''}" id="svc-${esc(sv.id)}">
@@ -284,7 +286,8 @@ function renderPublic(c) {
   <a class="brand" href="#inicio"><span class="brand-mark">⛰</span>${esc(g.businessName)}</a>
   <input type="checkbox" id="menu" class="menu-cb" aria-label="Abrir menú"><label for="menu" class="menu-btn" aria-hidden="true"><span></span><span></span><span></span></label>
   <nav class="links"><a href="#servicios">Servicios</a><a href="#productos">Productos</a>${c.payments.visible ? '<a href="#pagos">Pagos</a>' : ''}<a href="#contacto">Contacto</a>
-  <a class="btn btn-wa btn-sm" href="${esc(waLink(wa, g.whatsappMessage))}"${wa ? EXT : ''}>WhatsApp</a></nav>
+  <a class="btn btn-wa btn-sm" href="${esc(waLink(wa, g.whatsappMessage))}"${wa ? EXT : ''}>WhatsApp</a>
+  <a class="btn btn-login btn-sm" href="/admin">Iniciar sesión</a></nav>
 </div></header>
 <main id="inicio">
 <section class="hero ${g.heroImage ? 'has-img' : ''}"${heroStyle}><div class="wrap hero-in">
@@ -330,10 +333,11 @@ ${c.payments.visible ? `<section class="section" id="pagos"><div class="wrap">
   <div><div class="brand foot-brand"><span class="brand-mark">⛰</span>${esc(g.businessName)}</div><p>${esc(g.footerText)}</p>${socials ? `<div class="socials">${socials}</div>` : ''}</div>
   <div><h4>Contacto</h4><ul class="contact">
     ${g.whatsapp ? `<li>WhatsApp: <a href="${esc(waLink(wa, g.whatsappMessage))}"${EXT}>+${esc(g.whatsapp)}</a></li>` : ''}
+    ${g.phone ? `<li>Teléfono: <a href="tel:${esc(telHref)}">${esc(g.phone)}</a></li>` : ''}
     ${g.email ? `<li>Correo: <a href="mailto:${esc(g.email)}">${esc(g.email)}</a></li>` : ''}
     ${g.address ? `<li>Dirección: ${esc(g.address)}</li>` : ''}
   </ul></div>
-  <div><h4>Enlaces</h4><ul class="contact"><li><a href="#servicios">Servicios</a></li><li><a href="#productos">Productos</a></li>${c.payments.visible ? '<li><a href="#pagos">Métodos de pago</a></li>' : ''}</ul></div>
+  <div><h4>Enlaces</h4><ul class="contact"><li><a href="#servicios">Servicios</a></li><li><a href="#productos">Productos</a></li>${c.payments.visible ? '<li><a href="#pagos">Métodos de pago</a></li>' : ''}<li><a class="foot-login" href="/admin">Iniciar sesión</a></li></ul></div>
 </div><div class="wrap copy">© ${new Date().getFullYear()} ${esc(g.businessName)}. Todos los derechos reservados.</div></footer>
 ${wa ? `<a class="wa-float" href="${esc(waLink(wa, g.whatsappMessage))}"${EXT} aria-label="Escríbenos por WhatsApp">${svgIcon(SOCIAL_ICONS.whatsapp.svg)}<span>WhatsApp</span></a>` : ''}
 </body></html>`;

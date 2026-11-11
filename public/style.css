@@ -17,6 +17,8 @@ h1,h2,h3,h4{line-height:1.2;margin:0 0 .5em}
 .btn-disabled{background:#e5e7eb;color:#6b7280;cursor:not-allowed}
 .btn-disabled:hover{transform:none;box-shadow:none}
 .btn-sm{padding:.5em 1.1em;font-size:.95rem}
+.btn-login{background:transparent;color:var(--muted);border-color:var(--line);font-weight:600;padding:.4em .9em;font-size:.85rem}
+.btn-login:hover{color:var(--primary);border-color:var(--primary);background:var(--soft);transform:none;box-shadow:none}
 .btn-lg{padding:.95em 1.6em;font-size:1.05rem}
 /* nav */
 .nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
@@ -34,6 +36,7 @@ h1,h2,h3,h4{line-height:1.2;margin:0 0 .5em}
   .links{display:none;position:absolute;top:64px;left:-20px;right:-20px;flex-direction:column;align-items:stretch;gap:0;background:#fff;border-bottom:1px solid var(--line);padding:8px 20px 16px;box-shadow:var(--shadow)}
   .links a:not(.btn){padding:12px 0;border-bottom:1px solid var(--line)}
   .links .btn{margin-top:12px}
+  .links .btn-login{align-self:flex-start}
   .menu-cb:checked ~ .links{display:flex}
 }
 /* hero */
@@ -124,6 +127,8 @@ h1,h2,h3,h4{line-height:1.2;margin:0 0 .5em}
 .foot-brand{color:#fff;margin-bottom:10px}
 .footer p{margin:0 0 16px;max-width:380px}
 .footer a{color:#e7f3ef}
+.footer .foot-login{font-size:.88rem;color:#8ea39d}
+.footer .foot-login:hover{color:#e7f3ef}
 .contact{list-style:none;padding:0;margin:0;display:grid;gap:8px;word-break:break-word}
 .socials{display:flex;gap:10px;flex-wrap:wrap}
 .social{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.08);color:#fff;transition:background .15s}

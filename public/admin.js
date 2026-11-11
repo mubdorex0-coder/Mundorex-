@@ -139,6 +139,7 @@
         card('WhatsApp y contacto', [
           field('Número de WhatsApp (con código de país, solo números)', g, 'whatsapp', { inputmode: 'numeric', placeholder: '593991234567', help: 'Ejemplo Ecuador: 593 + número sin el 0 inicial.' }),
           field('Mensaje que llega por WhatsApp', g, 'whatsappMessage', { max: 300 }),
+          field('Teléfono', g, 'phone', { type: 'tel', max: 40, inputmode: 'tel', placeholder: '0968306412' }),
           field('Correo electrónico', g, 'email', { type: 'email', max: 120 }),
           field('Dirección', g, 'address', { max: 200 }),
           field('Texto del pie de página', g, 'footerText', { type: 'textarea', max: 300, wide: true })]),
