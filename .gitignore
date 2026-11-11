@@ -1,0 +1,5 @@
+auth.json
+setup-code.txt
+node_modules/
+uploads/*
+!uploads/.gitkeep

@@ -1,0 +1,114 @@
+{
+  "general": {
+    "businessName": "Turismo en Baños",
+    "heroEyebrow": "Baños de Agua Santa · Tungurahua, Ecuador",
+    "heroTitle": "Vive Baños de Agua Santa sin complicaciones",
+    "heroSubtitle": "Paseos en chiva, hospedajes económicos y departamentos cómodos en un solo lugar. Cuéntanos tu plan y reserva directo por WhatsApp.",
+    "heroCta": "Escríbenos por WhatsApp",
+    "heroImage": "",
+    "whatsapp": "593900000000",
+    "whatsappMessage": "Hola, quiero información sobre sus servicios en Baños.",
+    "email": "correo@tunegocio.com",
+    "address": "[Dirección de tu negocio], Baños de Agua Santa, Tungurahua",
+    "footerText": "Transporte turístico, hospedajes y departamentos en Baños de Agua Santa.",
+    "primaryColor": "#0e7c66",
+    "accentColor": "#f59e0b",
+    "finalCtaTitle": "¿Listo para tu próxima visita a Baños?",
+    "finalCtaText": "Cuéntanos tus fechas y cuántas personas viajan. Te respondemos por WhatsApp con la disponibilidad.",
+    "finalCtaButton": "Reservar por WhatsApp"
+  },
+  "sections": {
+    "servicesTitle": "Nuestros servicios",
+    "servicesSubtitle": "Todo lo que necesitas para disfrutar Baños: paseos, descanso y un lugar cómodo donde quedarte.",
+    "benefitsTitle": "¿Por qué elegirnos?",
+    "benefitsSubtitle": "Hacemos que organizar tu viaje sea fácil y cercano.",
+    "productsTitle": "Catálogo de productos",
+    "productsSubtitle": "Llévate un recuerdo de Baños o complementa tu viaje.",
+    "testimonialsTitle": "Lo que dicen nuestros clientes",
+    "testimonialsNote": "Testimonios de ejemplo: reemplázalos por opiniones reales de tus clientes desde el panel.",
+    "paymentsTitle": "Métodos de pago",
+    "paymentsSubtitle": "Elige la forma de pago que te resulte más cómoda.",
+    "banksTitle": "Bancos aceptados",
+    "banksNote": "Te enviamos los datos para la transferencia por WhatsApp al confirmar tu reserva."
+  },
+  "services": [
+    {
+      "id": "chivas",
+      "title": "Chivas en Baños",
+      "emoji": "🚌",
+      "description": "Recorre Baños de Agua Santa a bordo de una chiva turística: música, buen ambiente y paisajes de montaña que no vas a olvidar. Un plan perfecto para compartir con amigos, familia o tu grupo de viaje.",
+      "image": "",
+      "chips": ["Transporte turístico", "Ideal para grupos", "Familias y amigos"],
+      "ctaLabel": "Reserva tu chiva",
+      "waMessage": "Hola, quiero reservar una chiva en Baños. ¿Qué disponibilidad tienen?",
+      "visible": true
+    },
+    {
+      "id": "hospedajes",
+      "title": "Hospedajes",
+      "emoji": "🏨",
+      "description": "Hoteles económicos para descansar después de un día de aventura. Elige la opción con piscina o sin piscina que mejor se ajuste a tu presupuesto y a tu plan de viaje.",
+      "image": "",
+      "chips": ["Con piscina", "Sin piscina"],
+      "roomsTitle": "Tipos de habitación",
+      "rooms": [
+        { "name": "Matrimonial", "description": "Una cama matrimonial, ideal para parejas." },
+        { "name": "Cuádruple", "description": "Dos camas, capacidad para cuatro personas." },
+        { "name": "Triple", "description": "Una cama matrimonial y una litera, capacidad para seis personas." }
+      ],
+      "ctaLabel": "Consulta disponibilidad",
+      "waMessage": "Hola, quiero consultar la disponibilidad de hospedaje en Baños.",
+      "visible": true
+    },
+    {
+      "id": "departamentos",
+      "title": "Departamentos cómodos",
+      "emoji": "🏠",
+      "description": "Departamentos cómodos para sentirte como en casa durante tu estadía en Baños. Incluyen baño, sala, cocina, comedor y garaje, para que viajes con tranquilidad y todo a la mano.",
+      "image": "",
+      "chips": ["Baño", "Sala", "Cocina", "Comedor", "Garaje"],
+      "ctaLabel": "Reserva tu departamento",
+      "waMessage": "Hola, quiero reservar un departamento en Baños.",
+      "visible": true
+    }
+  ],
+  "benefits": [
+    { "icon": "📲", "title": "Reserva directa", "text": "Hablas directamente con nosotros por WhatsApp, sin intermediarios." },
+    { "icon": "🧭", "title": "Todo en un solo lugar", "text": "Transporte turístico, hospedaje y departamentos para organizar tu viaje fácilmente." },
+    { "icon": "💰", "title": "Para cada presupuesto", "text": "Desde hoteles económicos hasta departamentos completos para tu familia." },
+    { "icon": "⛰️", "title": "En el corazón de Baños", "text": "Disfruta la naturaleza, las cascadas y la aventura de Baños de Agua Santa." }
+  ],
+  "products": [
+    { "id": "a1b2c3d4e5f6", "name": "Producto de ejemplo 1", "description": "Describe aquí tu producto en una o dos líneas.", "price": "10.00", "currency": "USD", "image": "", "buyLabel": "Comprar", "buyLink": "", "soldOut": false },
+    { "id": "b2c3d4e5f6a1", "name": "Producto de ejemplo 2", "description": "Cambia la foto, el nombre y el precio desde el panel.", "price": "15.00", "currency": "USD", "image": "", "buyLabel": "Comprar", "buyLink": "", "soldOut": false },
+    { "id": "c3d4e5f6a1b2", "name": "Producto de ejemplo 3", "description": "Puedes marcarlo como agotado cuando no tengas stock.", "price": "20.00", "currency": "USD", "image": "", "buyLabel": "Comprar", "buyLink": "", "soldOut": false }
+  ],
+  "testimonials": [
+    { "name": "[Nombre del cliente]", "place": "[Ciudad]", "text": "Ejemplo de testimonio: aquí va la opinión real de un cliente sobre su paseo en chiva.", "example": true },
+    { "name": "[Nombre del cliente]", "place": "[Ciudad]", "text": "Ejemplo de testimonio: aquí va la opinión real de un cliente sobre su hospedaje.", "example": true },
+    { "name": "[Nombre del cliente]", "place": "[Ciudad]", "text": "Ejemplo de testimonio: aquí va la opinión real de un cliente sobre su departamento.", "example": true }
+  ],
+  "payments": {
+    "visible": true,
+    "methods": [
+      { "icon": "transfer", "name": "Transferencia bancaria", "note": "Desde cualquiera de los bancos aceptados." },
+      { "icon": "card", "name": "Tarjeta de crédito/débito", "note": "Consúltanos al momento de reservar." },
+      { "icon": "cash", "name": "Efectivo", "note": "Pago en persona." },
+      { "icon": "wallet", "name": "PayPal", "note": "Pago en línea." },
+      { "icon": "qr", "name": "Deuna", "note": "Paga desde tu celular." }
+    ],
+    "banks": [
+      { "name": "Banco Pacífico", "active": true },
+      { "name": "Banco Pichincha", "active": true },
+      { "name": "Banco del Austro", "active": true },
+      { "name": "Produbanco", "active": true }
+    ]
+  },
+  "social": {
+    "facebook": "https://facebook.com/tu-pagina",
+    "whatsapp": "https://wa.me/593900000000",
+    "youtube": "https://youtube.com/@tu-canal",
+    "instagram": "https://instagram.com/tu-cuenta",
+    "tiktok": "https://tiktok.com/@tu-cuenta"
+  }
+}
