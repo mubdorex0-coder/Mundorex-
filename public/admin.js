@@ -166,6 +166,11 @@
           imageField('Foto del servicio (opcional)', sv, 'image'),
           field('Texto del botón', sv, 'ctaLabel', { max: 60 }),
           field('Mensaje de WhatsApp de este botón', sv, 'waMessage', { max: 300 })];
+        if (sv.id === 'hospedajes' || sv.id === 'departamentos') {
+          if (sv.available == null) sv.available = true;
+          kids.push(toggle('Disponible', sv, 'available'));
+          kids.push(field('Unidades disponibles (opcional)', sv, 'units', { inputmode: 'numeric', max: 6, placeholder: 'Sin límite', help: 'Vacío = sin límite. 0 = agotada.' }));
+        }
         if (sv.rooms) kids.push(roomsEditor(sv));
         out.push(card(sv.title || sv.id, kids, toggle('Mostrar en la página', sv, 'visible')));
       });
@@ -335,15 +340,18 @@
       wrap.appendChild(field('Título de la lista', sv, 'roomsTitle', { max: 80 }));
       wrap.appendChild(field('Precio por vehículo / parqueadero', sv, 'vehiclePrice', { inputmode: 'decimal', max: 10, placeholder: '5', help: 'Se suma por cada vehículo. No cambia el precio por persona. Ejemplo: 5.' }));
       sv.rooms.forEach(function (r, i) {
+        if (r.available == null) r.available = true;
         wrap.appendChild(h('div', { class: 'room-row' },
           field('Nombre', r, 'name', { max: 80 }),
           field('Descripción corta', r, 'description', { max: 300 }),
           field('Temporada baja por persona', r, 'priceLow', { inputmode: 'decimal', max: 10, placeholder: '10' }),
           field('Temporada alta por persona', r, 'priceHigh', { inputmode: 'decimal', max: 10, placeholder: '15' }),
+          field('Unidades disponibles (opcional)', r, 'units', { inputmode: 'numeric', max: 6, placeholder: 'Sin límite' }),
+          toggle('Disponible', r, 'available'),
           field('Texto del botón', r, 'ctaLabel', { max: 40, placeholder: 'Reservar' }),
           h('span', { class: 'row-actions' }, moveBtns(sv.rooms, i, draw), h('button', { type: 'button', class: 'btn small danger', text: 'Quitar', onclick: function () { if (confirm('¿Quitar la habitación "' + (r.name || '') + '"?')) { sv.rooms.splice(i, 1); markDirty(); draw(); } } }))));
       });
-      wrap.appendChild(h('button', { type: 'button', class: 'btn small', text: '+ Agregar tipo de habitación', onclick: function () { sv.rooms.push({ name: '', description: '', priceLow: '10', priceHigh: '15', ctaLabel: 'Reservar' }); markDirty(); draw(); } }));
+      wrap.appendChild(h('button', { type: 'button', class: 'btn small', text: '+ Agregar tipo de habitación', onclick: function () { sv.rooms.push({ name: '', description: '', priceLow: '10', priceHigh: '15', ctaLabel: 'Reservar', available: true, units: '' }); markDirty(); draw(); } }));
     }
     draw(); return wrap;
   }

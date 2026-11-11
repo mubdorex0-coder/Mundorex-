@@ -52,7 +52,8 @@
     var sel = document.getElementById('pay-room-type');
     if (!sel || sel.selectedIndex < 0) return null;
     var opt = sel.options[sel.selectedIndex];
-    return opt && opt.value !== '' ? opt : null;
+    if (!opt || opt.value === '' || opt.disabled || opt.getAttribute('data-available') === '0') return null;
+    return opt;
   }
   function updateSeasonLabels() {
     var opt = selectedRoom();
@@ -91,7 +92,10 @@
     var err = document.getElementById('pay-room-error');
     var math = document.getElementById('pay-room-math');
     var idx = currentBuy.getAttribute('data-room-index');
-    if (type) type.value = idx == null || idx === '' ? '' : idx;
+    if (type) {
+      var preset = idx == null || idx === '' ? null : type.querySelector('option[value="' + idx + '"]');
+      type.value = preset && !preset.disabled ? idx : '';
+    }
     if (season) season.value = '';
     if (adults) adults.value = '';
     if (kids) kids.value = '';
@@ -109,11 +113,15 @@
     var vehicles = countOf('pay-vehicles', 0);
     var err = document.getElementById('pay-room-error');
     var math = document.getElementById('pay-room-math');
+    var rawSel = document.getElementById('pay-room-type');
+    var rawOpt = rawSel && rawSel.selectedIndex >= 0 ? rawSel.options[rawSel.selectedIndex] : null;
     var msg = '';
-    if (adults == null || kids == null) msg = 'Indica cuántos adultos y cuántos niños menores de 5 años son';
+    if (rawOpt && rawOpt.getAttribute('data-available') === '0') msg = 'Esta habitación está agotada.';
+    else if (adults == null || kids == null) msg = 'Indica cuántos adultos y cuántos niños menores de 5 años son';
     else if (vehicles == null) msg = 'Indica el número de vehículos';
     else if (!season) msg = 'Elige la temporada';
     else if (!opt) msg = 'Elige el tipo de habitación';
+    else if (opt.getAttribute('data-available') === '0') msg = 'Esta habitación está agotada.';
     if (msg) {
       if (math) math.hidden = true;
       if (err) { err.hidden = !roomTried; err.textContent = msg; }

@@ -106,6 +106,12 @@ h1,h2,h3,h4{line-height:1.2;margin:0 0 .5em}
 .room-card p{margin:0;color:var(--muted)}
 .room-rate{font-weight:800;color:var(--ink)!important}
 .room-card .btn{margin-top:8px;align-self:flex-start}
+.room-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.avail{display:inline-flex;align-self:flex-start;font-size:.78rem;font-weight:800;letter-spacing:.02em;padding:.2em .7em;border-radius:999px}
+.avail.ok{background:#e7f6f0;color:#0b5e4e}
+.avail.no{background:#fdecea;color:#9a3412}
+.btn-consult{background:#fff;color:var(--primary);border-color:var(--primary)}
+.btn-consult:hover{background:var(--soft)}
 .pay-field{display:flex;flex-direction:column;gap:4px;font-weight:700;font-size:.92rem;margin:0 0 10px}
 .pay-field input,.pay-field select{font:inherit;font-weight:600;padding:.55em .7em;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
 .pay-field-row{display:grid;grid-template-columns:1fr;gap:0}

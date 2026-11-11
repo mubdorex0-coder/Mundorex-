@@ -234,6 +234,10 @@ function sanitizeContent(c, errors) {
       chips: arr(sv.chips, 12).map((x) => str(x, 40)).filter(Boolean),
       ctaLabel: str(sv.ctaLabel, 60), waMessage: str(sv.waMessage, 300), visible: bool(sv.visible), emoji: str(sv.emoji, 8),
     };
+    if (id === 'hospedajes' || id === 'departamentos') {
+      o.available = sv.available == null || sv.available === '' ? true : bool(sv.available);
+      o.units = roomUnits(sv.units);
+    }
     if (id === 'hospedajes') {
       o.roomsTitle = str(sv.roomsTitle, 80);
       const vehicle = roomPrice(sv.vehiclePrice);
@@ -244,6 +248,8 @@ function sanitizeContent(c, errors) {
         priceLow: roomPrice(r && r.priceLow),
         priceHigh: roomPrice(r && r.priceHigh),
         ctaLabel: str(r && r.ctaLabel, 40) || 'Reservar',
+        available: !r || r.available == null || r.available === '' ? true : bool(r.available),
+        units: roomUnits(r && r.units),
       })).filter((r) => r.name);
     }
     out.services.push(o);
@@ -307,6 +313,38 @@ function unitLabel(v) {
   if (cents == null) return '';
   return cents % 100 === 0 ? `$${cents / 100}` : moneyUSD(cents);
 }
+function roomUnits(v) {
+  if (v == null || String(v).trim() === '') return null;
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < 0 || n > 9999) return null;
+  return n;
+}
+function lodgingOpen(item) {
+  if (!item || item.available === false) return false;
+  if (item.units === 0) return false;
+  return true;
+}
+function lodgingSoldOut(name) {
+  try {
+    const c = sanitizeContent(readContent(), []);
+    const items = [];
+    (c.services || []).forEach((sv) => {
+      if (sv.id === 'hospedajes' || sv.id === 'departamentos') items.push(sv);
+      (sv.rooms || []).forEach((r) => items.push(r));
+    });
+    const item = items.find((x) => x && (x.name === name || x.title === name));
+    return !!item && !lodgingOpen(item);
+  } catch { return false; }
+}
+function availBadge(item) {
+  if (!lodgingOpen(item)) return '<span class="avail no">Agotada</span>';
+  if (item.units != null) return `<span class="avail ok">Disponible: ${item.units}</span>`;
+  return '<span class="avail ok">Disponible</span>';
+}
+function consultBtn(wa, name) {
+  const href = wa ? `https://wa.me/${wa}?text=${encodeURIComponent(`Hola, quiero consultar disponibilidad de ${name}`)}` : '#contacto';
+  return `<a class="btn btn-consult" href="${esc(href)}"${wa ? EXT : ''}>Consultar disponibilidad</a>`;
+}
 const fmtPrice = (p, cur) => (p ? (cur === 'USD' ? `$${Number(p).toFixed(2)} USD` : `${Number(p).toFixed(2)} ${cur}`) : '');
 const EXT = ' target="_blank" rel="noopener noreferrer"';
 function renderPublic(c) {
@@ -319,20 +357,32 @@ function renderPublic(c) {
   const stay = c.services.find((x) => x.id === 'hospedajes') || {};
   const stayRooms = stay.rooms || [];
   const vehiclePrice = stay.vehiclePrice != null && stay.vehiclePrice !== '' ? stay.vehiclePrice : '5';
-  const roomCards = stayRooms.map((r, i) => {
+  const roomBook = (r, i) => {
     const low = unitLabel(r.priceLow);
     const high = unitLabel(r.priceHigh);
     const priceLine = [low && `Temporada baja: ${low} por persona`, high && `Temporada alta: ${high} por persona`].filter(Boolean).join(' · ');
+    const open = lodgingOpen(r);
+    const reserve = open
+      ? `<button type="button" class="btn btn-accent buy-open" data-room="1" data-room-index="${i}" data-name="${esc(r.name)}" data-price="${esc(priceLine)}" data-vehicle="${esc(String(vehiclePrice))}" data-fee-pct="${esc(String(feePct))}" data-wa="${esc(wa)}">${esc(r.ctaLabel || 'Reservar')}</button>`
+      : '<button type="button" class="btn btn-disabled" disabled>Agotada</button>';
+    return `${availBadge(r)}<div class="room-actions">${open ? consultBtn(wa, r.name) : ''}${reserve}</div>`;
+  };
+  const roomCards = stayRooms.map((r, i) => {
+    const low = unitLabel(r.priceLow);
+    const high = unitLabel(r.priceHigh);
     return `<article class="room-card">
       <h3>${esc(r.name)}</h3>
       ${r.description ? `<p>${esc(r.description)}</p>` : ''}
       <p class="room-rate">${low ? `Temporada baja: ${esc(low)} por persona` : 'Temporada baja: Consultar precio'}</p>
       <p class="room-rate">${high ? `Temporada alta: ${esc(high)} por persona` : 'Temporada alta: Consultar precio'}</p>
-      <button type="button" class="btn btn-accent buy-open" data-room="1" data-room-index="${i}" data-name="${esc(r.name)}" data-price="${esc(priceLine)}" data-vehicle="${esc(String(vehiclePrice))}" data-fee-pct="${esc(String(feePct))}" data-wa="${esc(wa)}">${esc(r.ctaLabel || 'Reservar')}</button>
+      ${roomBook(r, i)}
     </article>`;
   }).join('');
   const roomGrid = roomCards ? `<div class="room-grid" aria-label="Tipos de habitación">${roomCards}</div>` : '';
-  const roomOptions = stayRooms.map((r, i) => `<option value="${i}" data-low="${esc(r.priceLow)}" data-high="${esc(r.priceHigh)}">${esc(r.name)}</option>`).join('');
+  const roomOptions = stayRooms.map((r, i) => {
+    const open = lodgingOpen(r);
+    return `<option value="${i}" data-low="${esc(r.priceLow)}" data-high="${esc(r.priceHigh)}" data-available="${open ? '1' : '0'}"${open ? '' : ' disabled'}>${esc(r.name)}${open ? '' : ' (Agotada)'}</option>`;
+  }).join('');
   const byId = (id) => c.services.find((x) => x.id === id && x.visible);
   const chiva = byId('chivas');
   const depto = byId('departamentos');
@@ -341,14 +391,19 @@ function renderPublic(c) {
     ...stayRooms.map((r, i) => {
       const low = unitLabel(r.priceLow);
       const high = unitLabel(r.priceHigh);
-      return `<article class="card package"><h3>${esc(r.name)}</h3>${r.description ? `<p>${esc(r.description)}</p>` : ''}<p class="room-rate">${low ? `Temporada baja: ${esc(low)} por persona` : 'Temporada baja: Consultar precio'}</p><p class="room-rate">${high ? `Temporada alta: ${esc(high)} por persona` : 'Temporada alta: Consultar precio'}</p><button type="button" class="btn btn-accent buy-open" data-room="1" data-room-index="${i}" data-name="${esc(r.name)}" data-price="${esc([low && `Temporada baja: ${low} por persona`, high && `Temporada alta: ${high} por persona`].filter(Boolean).join(' · '))}" data-vehicle="${esc(String(vehiclePrice))}" data-fee-pct="${esc(String(feePct))}" data-wa="${esc(wa)}">${esc(r.ctaLabel || 'Reservar')}</button></article>`;
+      return `<article class="card package"><h3>${esc(r.name)}</h3>${r.description ? `<p>${esc(r.description)}</p>` : ''}<p class="room-rate">${low ? `Temporada baja: ${esc(low)} por persona` : 'Temporada baja: Consultar precio'}</p><p class="room-rate">${high ? `Temporada alta: ${esc(high)} por persona` : 'Temporada alta: Consultar precio'}</p>${roomBook(r, i)}</article>`;
     }),
-    depto ? `<article class="card package"><h3>${esc(depto.emoji || '')} ${esc(depto.title)}</h3><p>${esc(depto.description)}</p><a class="btn btn-primary" href="#svc-${esc(depto.id)}">${esc(depto.ctaLabel || 'Ver departamento')}</a></article>` : '',
+    depto ? `<article class="card package"><h3>${esc(depto.emoji || '')} ${esc(depto.title)}</h3><p>${esc(depto.description)}</p>${availBadge(depto)}<div class="room-actions">${lodgingOpen(depto) ? consultBtn(wa, depto.title) : ''}${lodgingOpen(depto) ? `<button type="button" class="btn btn-primary buy-open" data-room="1" data-room-pick="1" data-name="${esc(depto.title)}" data-price="" data-vehicle="${esc(String(vehiclePrice))}" data-fee-pct="${esc(String(feePct))}" data-wa="${esc(wa)}">${esc(depto.ctaLabel || 'Reservar')}</button>` : '<button type="button" class="btn btn-disabled" disabled>Agotada</button>'}</div></article>` : '',
   ].filter(Boolean).join('');
   const svcHtml = services.map((sv, i) => {
-    const lodgingPick = sv.id === 'departamentos'
-      ? `<button type="button" class="btn btn-primary buy-open" data-room="1" data-room-pick="1" data-name="${esc(sv.title)}" data-price="" data-vehicle="${esc(String(vehiclePrice))}" data-fee-pct="${esc(String(feePct))}" data-wa="${esc(wa)}">${esc(sv.ctaLabel || 'Reservar')}</button>`
+    const lodging = sv.id === 'hospedajes' || sv.id === 'departamentos';
+    const lodgingOpenNow = lodging && lodgingOpen(sv);
+    const reserveLodging = (sv.id === 'departamentos' || sv.id === 'hospedajes')
+      ? `<button type="button" class="btn btn-primary buy-open" data-room="1" data-room-pick="1" data-name="${esc(sv.title)}" data-price="" data-vehicle="${esc(String(vehiclePrice))}" data-fee-pct="${esc(String(feePct))}" data-wa="${esc(wa)}">${esc(sv.id === 'hospedajes' ? 'Reservar' : (sv.ctaLabel || 'Reservar'))}</button>`
       : `<a class="btn btn-primary" href="${esc(waLink(wa, sv.waMessage))}"${wa ? EXT : ''}>${esc(sv.ctaLabel || 'Escríbenos')}</a>`;
+    const lodgingPick = lodging
+      ? `<div class="room-actions">${availBadge(sv)}${lodgingOpenNow ? consultBtn(wa, sv.title) : ''}${lodgingOpenNow ? reserveLodging : '<button type="button" class="btn btn-disabled" disabled>Agotada</button>'}</div>`
+      : reserveLodging;
     return `
   <article class="service ${i % 2 ? 'rev' : ''}" id="svc-${esc(sv.id)}">
     <div class="service-media">${sv.image ? `<img src="${esc(sv.image)}" alt="${esc(sv.title)}" loading="lazy">` : `<div class="ph ph-${esc(sv.id)}"><span>${esc(sv.emoji || '★')}</span></div>`}</div>
@@ -864,6 +919,7 @@ async function handle(req, res) {
     const product = str(body.product, 140);
     const total = str(body.total, 40);
     const method = str(body.method, 80);
+    if (lodgingSoldOut(product)) return sendJson(res, 400, { error: 'Esa habitación está agotada.' });
     addReceipt({ id: rand(8), date: new Date().toISOString(), product, total, method, url });
     return sendJson(res, 200, { ok: true, url });
   }

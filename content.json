@@ -58,10 +58,12 @@
       "chips": ["Con piscina", "Sin piscina"],
       "roomsTitle": "Tipos de habitación",
       "vehiclePrice": "5",
+      "available": true,
+      "units": "",
       "rooms": [
-        { "name": "Habitación matrimonial", "description": "Una cama matrimonial, ideal para parejas.", "priceLow": "10", "priceHigh": "15", "ctaLabel": "Reservar" },
-        { "name": "Habitación cuádruple", "description": "Dos camas, capacidad para cuatro personas.", "priceLow": "10", "priceHigh": "15", "ctaLabel": "Reservar" },
-        { "name": "Habitación para familias grandes", "description": "Espacio amplio para familias grandes, con capacidad para seis personas.", "priceLow": "10", "priceHigh": "15", "ctaLabel": "Reservar" }
+        { "name": "Habitación matrimonial", "description": "Una cama matrimonial, ideal para parejas.", "priceLow": "10", "priceHigh": "15", "ctaLabel": "Reservar", "available": true, "units": "" },
+        { "name": "Habitación cuádruple", "description": "Dos camas, capacidad para cuatro personas.", "priceLow": "10", "priceHigh": "15", "ctaLabel": "Reservar", "available": true, "units": "" },
+        { "name": "Habitación para familias grandes", "description": "Espacio amplio para familias grandes, con capacidad para seis personas.", "priceLow": "10", "priceHigh": "15", "ctaLabel": "Reservar", "available": true, "units": "" }
       ],
       "ctaLabel": "Consulta disponibilidad",
       "waMessage": "Hola, quiero consultar la disponibilidad de hospedaje en Baños.",
@@ -74,8 +76,10 @@
       "description": "Departamentos cómodos para sentirte como en casa durante tu estadía en Baños. Incluyen baño, sala, cocina, comedor y garaje, para que viajes con tranquilidad y todo a la mano.",
       "image": "",
       "chips": ["Baño", "Sala", "Cocina", "Comedor", "Garaje"],
-      "ctaLabel": "Reserva tu departamento",
+      "ctaLabel": "Reservar",
       "waMessage": "Hola, quiero reservar un departamento en Baños.",
+      "available": true,
+      "units": "",
       "visible": true
     }
   ],
