@@ -187,7 +187,7 @@
             imageField('Foto', p, 'image'),
             field('Moneda', p, 'currency', { max: 5 }),
             field('Texto del botón', p, 'buyLabel', { max: 40, placeholder: 'Comprar' }),
-            field('Enlace de compra (opcional)', p, 'buyLink', { type: 'url', max: 500, wide: true, placeholder: 'https://…', help: 'Si lo dejas vacío, el botón abre WhatsApp con el nombre y precio del producto.' }),
+            field('Enlace de compra (opcional)', p, 'buyLink', { type: 'url', max: 500, wide: true, placeholder: 'https://…', help: 'Si lo dejas vacío, o pegas un enlace de WhatsApp, el botón abre las opciones de pago. Otro enlace se abre directo.' }),
             toggle('Agotado (desactiva el botón de compra)', p, 'soldOut')], head));
         });
         wrap.appendChild(h('button', { type: 'button', class: 'btn primary', text: '+ Agregar producto', onclick: function () {
@@ -214,7 +214,9 @@
       var p = state.payments, s = state.sections, wrap = h('div');
       function draw() {
         wrap.textContent = '';
+        if (p.cardFeePercent == null || p.cardFeePercent === '') p.cardFeePercent = 15;
         wrap.appendChild(card('Sección de métodos de pago', [field('Título', s, 'paymentsTitle'), field('Subtítulo', s, 'paymentsSubtitle', { wide: true }),
+          field('Comisión por tarjeta de crédito (%)', p, 'cardFeePercent', { inputmode: 'decimal', max: 6, placeholder: '15', help: 'Se suma al precio solo si el cliente elige Tarjeta de crédito en el catálogo. Ejemplo: 15. No se piden datos de la tarjeta.' }),
           h('p', { class: 'muted wide', text: 'Esta sección solo informa cómo pagar; no cobra ni guarda datos de tarjetas.' })], toggle('Mostrar sección', p, 'visible')));
         var mcard = h('section', { class: 'pcard' }, h('div', { class: 'pcard-head' }, h('h3', { text: 'Formas de pago' })));
         p.methods.forEach(function (m, i) {
@@ -277,13 +279,20 @@
     var wrap = h('div', { class: 'field wide rooms-ed' });
     function draw() {
       wrap.textContent = '';
+      if (sv.vehiclePrice == null || sv.vehiclePrice === '') sv.vehiclePrice = '5';
       wrap.appendChild(h('span', { text: 'Tipos de habitación' }));
       wrap.appendChild(field('Título de la lista', sv, 'roomsTitle', { max: 80 }));
+      wrap.appendChild(field('Precio por vehículo / parqueadero', sv, 'vehiclePrice', { inputmode: 'decimal', max: 10, placeholder: '5', help: 'Se suma por cada vehículo. No cambia el precio por persona. Ejemplo: 5.' }));
       sv.rooms.forEach(function (r, i) {
-        wrap.appendChild(h('div', { class: 'room-row' }, field('Nombre', r, 'name', { max: 60 }), field('Descripción', r, 'description', { max: 300 }),
+        wrap.appendChild(h('div', { class: 'room-row' },
+          field('Nombre', r, 'name', { max: 80 }),
+          field('Descripción corta', r, 'description', { max: 300 }),
+          field('Temporada baja por persona', r, 'priceLow', { inputmode: 'decimal', max: 10, placeholder: '10' }),
+          field('Temporada alta por persona', r, 'priceHigh', { inputmode: 'decimal', max: 10, placeholder: '15' }),
+          field('Texto del botón', r, 'ctaLabel', { max: 40, placeholder: 'Reservar' }),
           h('span', { class: 'row-actions' }, moveBtns(sv.rooms, i, draw), h('button', { type: 'button', class: 'btn small danger', text: 'Quitar', onclick: function () { if (confirm('¿Quitar la habitación "' + (r.name || '') + '"?')) { sv.rooms.splice(i, 1); markDirty(); draw(); } } }))));
       });
-      wrap.appendChild(h('button', { type: 'button', class: 'btn small', text: '+ Agregar tipo de habitación', onclick: function () { sv.rooms.push({ name: '', description: '' }); markDirty(); draw(); } }));
+      wrap.appendChild(h('button', { type: 'button', class: 'btn small', text: '+ Agregar tipo de habitación', onclick: function () { sv.rooms.push({ name: '', description: '', priceLow: '10', priceHigh: '15', ctaLabel: 'Reservar' }); markDirty(); draw(); } }));
     }
     draw(); return wrap;
   }

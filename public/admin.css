@@ -84,7 +84,7 @@ input[type=color]{height:44px;padding:4px;cursor:pointer}
 .row-actions{display:inline-flex;gap:6px;align-items:center}
 .moves{display:inline-flex;gap:4px}
 .rooms-ed{border:1px dashed #cfdad6;border-radius:12px;padding:14px;background:#fafcfb}
-.room-row{display:grid;grid-template-columns:1fr 2fr auto;gap:10px;align-items:end;padding:10px 0;border-bottom:1px solid var(--line)}
+.room-row{display:grid;grid-template-columns:1fr 1.4fr .7fr .7fr .7fr auto;gap:10px;align-items:end;padding:10px 0;border-bottom:1px solid var(--line)}
 .item{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
 .item-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .item-head .row-actions{margin-left:auto}

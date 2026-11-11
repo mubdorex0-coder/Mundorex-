@@ -8,12 +8,14 @@ h1,h2,h3,h4{line-height:1.2;margin:0 0 .5em}
 .wrap{width:100%;max-width:1160px;margin:0 auto;padding:0 20px}
 .ico{width:1.2em;height:1.2em;flex:none}
 /* botones */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5em;padding:.8em 1.4em;border-radius:999px;font-weight:700;text-decoration:none;border:2px solid transparent;cursor:pointer;font-size:1rem;transition:transform .15s,box-shadow .15s,background .15s;text-align:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5em;padding:.8em 1.4em;border-radius:999px;font-weight:700;text-decoration:none;border:2px solid transparent;cursor:pointer;font:inherit;font-weight:700;font-size:1rem;transition:transform .15s,box-shadow .15s,background .15s;text-align:center}
 .btn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.12)}
 .btn-primary{background:var(--primary);color:#fff}
 .btn-accent{background:var(--accent);color:#1f1300}
 .btn-wa{background:var(--wa);color:#05361a}
 .btn-ghost{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.6)}
+.btn-secondary{background:#fff;color:var(--ink);border-color:var(--line)}
+.btn-secondary:hover{border-color:var(--primary);color:var(--primary)}
 .btn-disabled{background:#e5e7eb;color:#6b7280;cursor:not-allowed}
 .btn-disabled:hover{transform:none;box-shadow:none}
 .btn-sm{padding:.5em 1.1em;font-size:.95rem}
@@ -80,11 +82,19 @@ h1,h2,h3,h4{line-height:1.2;margin:0 0 .5em}
 .chips{list-style:none;padding:0;margin:0 0 22px;display:flex;flex-wrap:wrap;gap:8px}
 .chips li{background:var(--soft);border:1px solid var(--line);color:var(--ink);padding:.35em .9em;border-radius:999px;font-weight:600;font-size:.92rem}
 .chips li::before{content:"✓ ";color:var(--primary)}
-.rooms-title{font-size:1.05rem;margin-top:4px}
-.rooms{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:22px}
-.room{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:12px 14px;background:#fff;display:flex;flex-direction:column;gap:2px}
-.room strong{font-size:1rem}
-.room span{color:var(--muted);font-size:.92rem;line-height:1.45}
+.room-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;margin:8px 0 56px}
+.room-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px}
+.room-card h3{margin:0;color:var(--primary);font-size:1.25rem}
+.room-card p{margin:0;color:var(--muted)}
+.room-rate{font-weight:800;color:var(--ink)!important}
+.room-card .btn{margin-top:8px;align-self:flex-start}
+.pay-field{display:flex;flex-direction:column;gap:4px;font-weight:700;font-size:.92rem;margin:0 0 10px}
+.pay-field input,.pay-field select{font:inherit;font-weight:600;padding:.55em .7em;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+.pay-field-row{display:grid;grid-template-columns:1fr;gap:0}
+@media (min-width:640px){.pay-field-row{grid-template-columns:1fr 1fr 1fr;gap:10px}}
+.pay-age-note{margin:0 0 10px;font-size:.88rem;color:var(--muted)}
+.pay-room-error{margin:0 0 10px;color:#9a3412;background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:.55em .8em;font-weight:700}
+.pay-proof[aria-disabled="true"]{opacity:.6}
 /* beneficios */
 .benefit{text-align:left}
 .b-ico{display:grid;place-items:center;width:52px;height:52px;border-radius:14px;background:var(--soft);font-size:1.6rem;margin-bottom:14px}
@@ -126,6 +136,43 @@ h1,h2,h3,h4{line-height:1.2;margin:0 0 .5em}
 .bank-copy:hover{border-color:var(--primary);color:var(--primary)}
 .banks li .ico{color:var(--primary)}
 .banks .note{margin-top:12px}
+/* modal de pago */
+body.modal-open{overflow:hidden}
+.pay-modal{position:fixed;inset:0;z-index:80;display:grid;place-items:end center;padding:0}
+.pay-modal[hidden]{display:none}
+.pay-backdrop{position:absolute;inset:0;background:rgba(6,20,18,.62)}
+.pay-dialog{position:relative;z-index:1;width:min(480px,100%);max-height:min(92vh,760px);overflow:auto;background:#fff;color:var(--ink);border-radius:22px 22px 0 0;padding:22px 18px calc(18px + env(safe-area-inset-bottom));box-shadow:0 24px 60px rgba(0,0,0,.3)}
+.pay-dialog:focus{outline:none}
+.pay-x{position:absolute;top:10px;right:10px;width:40px;height:40px;border:0;border-radius:999px;background:var(--soft);color:var(--ink);font-size:1.5rem;line-height:1;cursor:pointer}
+.pay-x:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.pay-dialog h2{margin:0 36px .15em 0;font-size:1.35rem}
+.pay-price{margin:0 0 14px;font-weight:800;color:var(--primary);font-size:1.12rem}
+.pay-price:empty{display:none}
+.pay-choices{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.pay-choice{flex:1 1 148px;display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:14px;padding:12px;background:#fff;text-align:left}
+.pay-choice .ico{width:22px;height:22px;color:var(--primary);flex:none;margin-top:1px}
+.pay-choice strong{display:block}
+.pay-choice p{margin:.2em 0 0;color:var(--muted);font-weight:500;font-size:.88rem}
+.pay-choice .bank-acct{justify-content:flex-start;margin-top:6px}
+.pay-card-btn{display:flex;align-items:center;gap:8px;width:100%;margin:0;padding:0;border:0;background:transparent;color:inherit;font:inherit;font-weight:700;text-align:left;cursor:pointer}
+.pay-card-btn .ico{width:22px;height:22px;color:var(--primary);flex:none}
+.pay-card-btn[aria-expanded="true"]{color:var(--primary)}
+.pay-card-panel{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:14px;padding:12px 14px;margin:0 0 12px;background:#fffaf0}
+.pay-card-panel[hidden]{display:none}
+.pay-card-panel p{margin:0 0 8px;color:var(--ink)}
+.pay-card-math{list-style:none;padding:0;margin:0 0 10px;display:grid;gap:4px}
+.pay-card-math li:last-child{font-size:1.05rem;padding-top:4px}
+.pay-options{list-style:none;padding:0;margin:0 0 16px;display:grid;gap:8px}
+.pay-opt{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:14px;padding:12px;background:#fff;text-align:left}
+.pay-opt .ico{width:22px;height:22px;color:var(--primary);flex:none;margin-top:1px}
+.pay-opt strong{display:block}
+.pay-opt p{margin:.15em 0 0;color:var(--muted);font-weight:500;font-size:.92rem}
+.pay-opt .bank-acct{justify-content:flex-start;margin-top:6px}
+.pay-proof{width:100%}
+@media (min-width:640px){
+  .pay-modal{place-items:center;padding:24px}
+  .pay-dialog{border-radius:22px;padding:24px}
+}
 /* cta final */
 .final-cta{background:linear-gradient(135deg,var(--primary),#0b3b33);color:#fff;text-align:center;padding:72px 0}
 .final-cta h2{font-size:clamp(1.6rem,3.5vw,2.3rem)}

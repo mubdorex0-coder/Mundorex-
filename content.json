@@ -52,10 +52,11 @@
       "image": "",
       "chips": ["Con piscina", "Sin piscina"],
       "roomsTitle": "Tipos de habitación",
+      "vehiclePrice": "5",
       "rooms": [
-        { "name": "Matrimonial", "description": "Una cama matrimonial, ideal para parejas." },
-        { "name": "Cuádruple", "description": "Dos camas, capacidad para cuatro personas." },
-        { "name": "Triple", "description": "Una cama matrimonial y una litera, capacidad para seis personas." }
+        { "name": "Habitación matrimonial", "description": "Una cama matrimonial, ideal para parejas.", "priceLow": "10", "priceHigh": "15", "ctaLabel": "Reservar" },
+        { "name": "Habitación cuádruple", "description": "Dos camas, capacidad para cuatro personas.", "priceLow": "10", "priceHigh": "15", "ctaLabel": "Reservar" },
+        { "name": "Habitación para familias grandes", "description": "Espacio amplio para familias grandes, con capacidad para seis personas.", "priceLow": "10", "priceHigh": "15", "ctaLabel": "Reservar" }
       ],
       "ctaLabel": "Consulta disponibilidad",
       "waMessage": "Hola, quiero consultar la disponibilidad de hospedaje en Baños.",
@@ -98,11 +99,12 @@
       { "icon": "wallet", "name": "PayPal", "note": "Pago en línea." },
       { "icon": "qr", "name": "Deuna", "note": "Paga desde tu celular." }
     ],
+    "cardFeePercent": 15,
     "banks": [
-      { "name": "Banco Pacífico", "active": true, "accountNumber": "" },
       { "name": "Banco Pichincha", "active": true, "accountNumber": "2213461121" },
-      { "name": "Banco del Austro", "active": true, "accountNumber": "" },
-      { "name": "Produbanco", "active": true, "accountNumber": "" }
+      { "name": "Produbanco", "active": true, "accountNumber": "" },
+      { "name": "Banco del Pacífico", "active": true, "accountNumber": "" },
+      { "name": "Banco del Austro", "active": false, "accountNumber": "" }
     ]
   },
   "social": {

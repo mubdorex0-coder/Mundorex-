@@ -213,7 +213,7 @@ function sanitizeContent(c, errors) {
     },
     sections: {},
     services: [], benefits: [], products: [], testimonials: [],
-    payments: { visible: bool(p.visible), methods: [], banks: [] },
+    payments: { visible: bool(p.visible), cardFeePercent: feePercent(p.cardFeePercent), methods: [], banks: [] },
     social: {},
   };
   ['servicesTitle', 'servicesSubtitle', 'benefitsTitle', 'benefitsSubtitle', 'productsTitle', 'productsSubtitle', 'testimonialsTitle', 'testimonialsNote', 'paymentsTitle', 'paymentsSubtitle', 'banksTitle', 'banksNote']
@@ -228,7 +228,15 @@ function sanitizeContent(c, errors) {
     };
     if (id === 'hospedajes') {
       o.roomsTitle = str(sv.roomsTitle, 80);
-      o.rooms = arr(sv.rooms, 20).map((r) => ({ name: str(r && r.name, 60), description: str(r && r.description, 300) })).filter((r) => r.name || r.description);
+      const vehicle = roomPrice(sv.vehiclePrice);
+      o.vehiclePrice = vehicle === '' ? '5' : vehicle;
+      o.rooms = arr(sv.rooms, 20).map((r) => ({
+        name: str(r && r.name, 80),
+        description: str(r && r.description, 300),
+        priceLow: roomPrice(r && r.priceLow),
+        priceHigh: roomPrice(r && r.priceHigh),
+        ctaLabel: str(r && r.ctaLabel, 40) || 'Reservar',
+      })).filter((r) => r.name);
     }
     out.services.push(o);
   });
@@ -261,6 +269,35 @@ function imagesIn(c) {
 
 /* ---------- página pública ---------- */
 const waLink = (num, msg) => (num ? `https://wa.me/${num}?text=${encodeURIComponent(msg || '')}` : '#contacto');
+const isStoreLink = (link) => {
+  if (!link) return false;
+  try {
+    const host = new URL(link).hostname.replace(/^www\./, '');
+    return host !== 'wa.me' && host !== 'api.whatsapp.com' && host !== 'whatsapp.com';
+  } catch { return true; }
+};
+function feePercent(v) {
+  if (v == null || v === '') return 15;
+  const n = Number(String(v).replace(',', '.'));
+  if (!Number.isFinite(n) || n < 0 || n > 100) return 15;
+  return Math.round(n * 100) / 100;
+}
+function priceCents(price) {
+  const m = String(price || '').match(/^(\d+)(?:\.(\d{1,2}))?$/);
+  if (!m) return null;
+  return Number(m[1]) * 100 + Number((m[2] || '').padEnd(2, '0'));
+}
+function moneyUSD(cents) { return `$${(cents / 100).toFixed(2)}`; }
+function roomPrice(v) {
+  const s = str(v == null ? '' : v, 20).replace(',', '.');
+  if (!s) return '';
+  return /^\d{1,7}(\.\d{1,2})?$/.test(s) ? s : '';
+}
+function unitLabel(v) {
+  const cents = priceCents(v);
+  if (cents == null) return '';
+  return cents % 100 === 0 ? `$${cents / 100}` : moneyUSD(cents);
+}
 const fmtPrice = (p, cur) => (p ? (cur === 'USD' ? `$${Number(p).toFixed(2)} USD` : `${Number(p).toFixed(2)} ${cur}`) : '');
 const EXT = ' target="_blank" rel="noopener noreferrer"';
 function renderPublic(c) {
@@ -269,26 +306,59 @@ function renderPublic(c) {
   const telHref = phoneDigits.startsWith('0') ? '+593' + phoneDigits.slice(1) : phoneDigits;
   const pageTitle = g.heroTitle === g.businessName ? g.businessName : `${g.businessName} · ${g.heroTitle}`;
   const services = c.services.filter((x) => x.visible);
-  const svcHtml = services.map((sv, i) => `
+  const feePct = feePercent(c.payments.cardFeePercent);
+  const stay = c.services.find((x) => x.id === 'hospedajes') || {};
+  const stayRooms = stay.rooms || [];
+  const vehiclePrice = stay.vehiclePrice != null && stay.vehiclePrice !== '' ? stay.vehiclePrice : '5';
+  const roomCards = stayRooms.map((r, i) => {
+    const low = unitLabel(r.priceLow);
+    const high = unitLabel(r.priceHigh);
+    const priceLine = [low && `Temporada baja: ${low} por persona`, high && `Temporada alta: ${high} por persona`].filter(Boolean).join(' · ');
+    return `<article class="room-card">
+      <h3>${esc(r.name)}</h3>
+      ${r.description ? `<p>${esc(r.description)}</p>` : ''}
+      <p class="room-rate">${low ? `Temporada baja: ${esc(low)} por persona` : 'Temporada baja: Consultar precio'}</p>
+      <p class="room-rate">${high ? `Temporada alta: ${esc(high)} por persona` : 'Temporada alta: Consultar precio'}</p>
+      <button type="button" class="btn btn-accent buy-open" data-room="1" data-room-index="${i}" data-name="${esc(r.name)}" data-price="${esc(priceLine)}" data-vehicle="${esc(String(vehiclePrice))}" data-fee-pct="${esc(String(feePct))}" data-wa="${esc(wa)}">${esc(r.ctaLabel || 'Reservar')}</button>
+    </article>`;
+  }).join('');
+  const roomGrid = roomCards ? `<div class="room-grid" aria-label="Tipos de habitación">${roomCards}</div>` : '';
+  const roomOptions = stayRooms.map((r, i) => `<option value="${i}" data-low="${esc(r.priceLow)}" data-high="${esc(r.priceHigh)}">${esc(r.name)}</option>`).join('');
+  const svcHtml = services.map((sv, i) => {
+    const lodgingPick = sv.id === 'departamentos'
+      ? `<button type="button" class="btn btn-primary buy-open" data-room="1" data-room-pick="1" data-name="${esc(sv.title)}" data-price="" data-vehicle="${esc(String(vehiclePrice))}" data-fee-pct="${esc(String(feePct))}" data-wa="${esc(wa)}">${esc(sv.ctaLabel || 'Reservar')}</button>`
+      : `<a class="btn btn-primary" href="${esc(waLink(wa, sv.waMessage))}"${wa ? EXT : ''}>${esc(sv.ctaLabel || 'Escríbenos')}</a>`;
+    return `
   <article class="service ${i % 2 ? 'rev' : ''}" id="svc-${esc(sv.id)}">
     <div class="service-media">${sv.image ? `<img src="${esc(sv.image)}" alt="${esc(sv.title)}" loading="lazy">` : `<div class="ph ph-${esc(sv.id)}"><span>${esc(sv.emoji || '★')}</span></div>`}</div>
     <div class="service-body">
       <h3>${esc(sv.title)}</h3>
       <p>${esc(sv.description)}</p>
       ${sv.chips.length ? `<ul class="chips">${sv.chips.map((ch) => `<li>${esc(ch)}</li>`).join('')}</ul>` : ''}
-      ${sv.rooms && sv.rooms.length ? `<h4 class="rooms-title">${esc(sv.roomsTitle || 'Tipos de habitación')}</h4>
-      <div class="rooms">${sv.rooms.map((r) => `<div class="room"><strong>${esc(r.name)}</strong><span>${esc(r.description)}</span></div>`).join('')}</div>` : ''}
-      <a class="btn btn-primary" href="${esc(waLink(wa, sv.waMessage))}"${wa ? EXT : ''}>${esc(sv.ctaLabel || 'Escríbenos')}</a>
+      ${lodgingPick}
     </div>
-  </article>`).join('');
+  </article>${sv.id === 'hospedajes' ? roomGrid : ''}`;
+  }).join('');
   const products = c.products.map((pr) => {
     const price = fmtPrice(pr.price, pr.currency);
-    const href = pr.buyLink || waLink(wa, `Hola, quiero comprar: ${pr.name}${price ? ` (${price})` : ''}`);
+    const cents = priceCents(pr.price);
+    const feeCents = cents == null ? null : Math.round(cents * feePct / 100);
+    const totalCents = cents == null ? null : cents + feeCents;
+    const baseMoney = cents == null ? '' : moneyUSD(cents);
+    const feeMoney = feeCents == null ? '' : moneyUSD(feeCents);
+    const totalMoney = totalCents == null ? '' : moneyUSD(totalCents);
+    const proof = waLink(wa, `Hola, ya pagué ${pr.name}${price ? ` (${price})` : ''}. Te envío el comprobante.`);
+    const proofCard = waLink(wa, `Hola, ya pagué ${pr.name}. Total a pagar con tarjeta: ${totalMoney || price || ''}. Te envío el comprobante.`);
+    const buy = pr.soldOut
+      ? '<button class="btn btn-disabled" disabled>Agotado</button>'
+      : (isStoreLink(pr.buyLink)
+        ? `<a class="btn btn-accent" href="${esc(pr.buyLink)}"${EXT}>${esc(pr.buyLabel)}</a>`
+        : `<button type="button" class="btn btn-accent buy-open" data-name="${esc(pr.name)}" data-price="${esc(price)}" data-proof="${esc(proof)}" data-proof-card="${esc(proofCard)}" data-base="${esc(baseMoney)}" data-fee-amt="${esc(feeMoney)}" data-total="${esc(totalMoney)}" data-fee-pct="${esc(String(feePct))}">${esc(pr.buyLabel)}</button>`);
     return `<article class="product ${pr.soldOut ? 'sold' : ''}">
       <div class="product-media">${pr.image ? `<img src="${esc(pr.image)}" alt="${esc(pr.name)}" loading="lazy">` : '<div class="ph ph-product"><span>🛍️</span></div>'}${pr.soldOut ? '<span class="badge-sold">Agotado</span>' : ''}</div>
       <div class="product-body"><h3>${esc(pr.name)}</h3><p>${esc(pr.description)}</p>
       <div class="product-foot"><span class="price">${esc(price)}</span>
-      ${pr.soldOut ? '<button class="btn btn-disabled" disabled>Agotado</button>' : `<a class="btn btn-accent" href="${esc(href)}"${EXT}>${esc(pr.buyLabel)}</a>`}</div></div>
+      ${buy}</div></div>
     </article>`;
   }).join('');
   const banks = c.payments.banks.filter((b) => b.active);
@@ -298,6 +368,56 @@ function renderPublic(c) {
     const id = `bank-acct-${i}`;
     return `<li class="bank-has"><button type="button" class="bank-toggle" aria-expanded="false" aria-controls="${id}">${svgIcon(ICONS.transfer.svg)}<span>${esc(b.name)}</span></button><div class="bank-acct" id="${id}" hidden><span class="bank-num">${esc(num)}</span><button type="button" class="bank-copy" data-copy="${esc(num)}">Copiar</button></div></li>`;
   }).join('');
+  const pichincha = banks.find((b) => /pichincha/i.test(b.name));
+  const cardAcct = (pichincha && pichincha.accountNumber) || '2213461121';
+  const payBankOpts = banks.map((b) => {
+    const num = String(b.accountNumber || '').trim();
+    const detail = num
+      ? `<div class="bank-acct"><span class="bank-num">${esc(num)}</span><button type="button" class="bank-copy" data-copy="${esc(num)}">Copiar</button></div>`
+      : '<p>Pide el número de cuenta por WhatsApp</p>';
+    return `<div class="pay-choice">${svgIcon(ICONS.transfer.svg)}<div><strong>${esc(b.name)}</strong>${detail}</div></div>`;
+  }).join('');
+  const payModal = `<div class="pay-modal" id="pay-modal" hidden>
+  <div class="pay-backdrop" data-close-modal></div>
+  <div class="pay-dialog" role="dialog" aria-modal="true" aria-labelledby="pay-title pay-price" tabindex="-1">
+    <button type="button" class="pay-x" data-close-modal aria-label="Cerrar">×</button>
+    <h2 id="pay-title"></h2>
+    <p class="pay-price" id="pay-price"></p>
+    <div id="pay-room" hidden>
+      <label class="pay-field">Tipo de habitación
+        <select id="pay-room-type"><option value="">Elige el tipo de habitación</option>${roomOptions}</select>
+      </label>
+      <label class="pay-field">Temporada
+        <select id="pay-season"><option value="">Elige la temporada</option><option value="baja">Temporada baja</option><option value="alta">Temporada alta</option></select>
+      </label>
+      <div class="pay-field-row">
+        <label class="pay-field">Adultos y niños de 5 años en adelante
+          <input id="pay-adults" type="number" min="1" inputmode="numeric" autocomplete="off">
+        </label>
+        <label class="pay-field">Niños menores de 5 años (no pagan)
+          <input id="pay-kids" type="number" min="0" inputmode="numeric" autocomplete="off">
+        </label>
+        <label class="pay-field">Número de vehículos
+          <input id="pay-vehicles" type="number" min="0" inputmode="numeric" autocomplete="off">
+        </label>
+      </div>
+      <p class="pay-age-note">Niños menores de 5 años no pagan. Desde los 5 años pagan como adulto.</p>
+      <p id="pay-room-error" class="pay-room-error" hidden></p>
+      <ul id="pay-room-math" class="pay-card-math" hidden></ul>
+    </div>
+    <div class="pay-choices">${payBankOpts}<div class="pay-choice pay-choice-card"><button type="button" class="pay-card-btn" aria-expanded="false" aria-controls="pay-card-panel">${svgIcon(ICONS.card.svg)}<span>Tarjeta de crédito</span></button></div></div>
+    <div id="pay-card-panel" class="pay-card-panel" hidden>
+      <ul class="pay-card-math">
+        <li>Precio: <strong id="pay-card-base"></strong></li>
+        <li>Comisión tarjeta (<span id="pay-card-pct">${esc(String(feePct))}</span>%): <strong id="pay-card-fee"></strong></li>
+        <li>Total a pagar: <strong id="pay-card-total"></strong></li>
+      </ul>
+      <p>Paga desde tu tarjeta o app del Banco Pichincha a la cuenta ${esc(cardAcct)}</p>
+      <div class="pay-opt"><div><strong>Banco Pichincha</strong><div class="bank-acct"><span class="bank-num">${esc(cardAcct)}</span><button type="button" class="bank-copy" data-copy="${esc(cardAcct)}">Copiar</button></div></div></div>
+    </div>
+    <a class="btn btn-secondary pay-proof" id="pay-proof" href="#contacto"${EXT}>Ya pagué: enviar comprobante por WhatsApp</a>
+  </div>
+</div>`;
   const socials = Object.keys(SOCIAL_ICONS).filter((k) => c.social[k])
     .map((k) => `<a class="social" href="${esc(c.social[k])}"${EXT} aria-label="${SOCIAL_ICONS[k].label}" title="${SOCIAL_ICONS[k].label}">${svgIcon(SOCIAL_ICONS[k].svg)}</a>`).join('');
   const heroUrl = g.heroImage || '/img/cascada-noche-2.jpg';
@@ -367,7 +487,8 @@ ${c.payments.visible ? `<section class="section" id="pagos"><div class="wrap">
   <div><h4>Enlaces</h4><ul class="contact"><li><a href="#servicios">Servicios</a></li><li><a href="#productos">Productos</a></li>${c.payments.visible ? '<li><a href="#pagos">Métodos de pago</a></li>' : ''}<li><a class="foot-login" href="/admin">Iniciar sesión</a></li></ul></div>
 </div><div class="wrap copy">© ${new Date().getFullYear()} ${esc(g.businessName)}. Todos los derechos reservados.</div></footer>
 ${wa ? `<a class="wa-float" href="${esc(waLink(wa, g.whatsappMessage))}"${EXT} aria-label="Escríbenos por WhatsApp">${svgIcon(SOCIAL_ICONS.whatsapp.svg)}<span>WhatsApp</span></a>` : ''}
-${banks.some((b) => b.accountNumber) ? '<script src="/site.js" defer></script>' : ''}
+${payModal}
+<script src="/site.js" defer></script>
 </body></html>`;
 }
 
