@@ -374,7 +374,7 @@ function renderPublic(c) {
       ? '<button class="btn btn-disabled" disabled>Agotado</button>'
       : (isStoreLink(pr.buyLink)
         ? `<a class="btn btn-accent" href="${esc(pr.buyLink)}"${EXT}>${esc(pr.buyLabel)}</a>`
-        : `<button type="button" class="btn btn-accent buy-open" data-name="${esc(pr.name)}" data-price="${esc(price)}" data-proof="${esc(proof)}" data-proof-card="${esc(proofCard)}" data-base="${esc(baseMoney)}" data-fee-amt="${esc(feeMoney)}" data-total="${esc(totalMoney)}" data-fee-pct="${esc(String(feePct))}">${esc(pr.buyLabel)}</button>`);
+        : `<button type="button" class="btn btn-accent buy-open" data-name="${esc(pr.name)}" data-price="${esc(price)}" data-proof="${esc(proof)}" data-proof-card="${esc(proofCard)}" data-base="${esc(baseMoney)}" data-fee-amt="${esc(feeMoney)}" data-total="${esc(totalMoney)}" data-fee-pct="${esc(String(feePct))}" data-wa="${esc(wa)}">${esc(pr.buyLabel)}</button>`);
     return `<article class="product ${pr.soldOut ? 'sold' : ''}">
       <div class="product-media">${pr.image ? `<img src="${esc(pr.image)}" alt="${esc(pr.name)}" loading="lazy">` : '<div class="ph ph-product"><span>🛍️</span></div>'}${pr.soldOut ? '<span class="badge-sold">Agotado</span>' : ''}</div>
       <div class="product-body"><h3>${esc(pr.name)}</h3><p>${esc(pr.description)}</p>
@@ -396,7 +396,7 @@ function renderPublic(c) {
     const detail = num
       ? `<div class="bank-acct"><span class="bank-num">${esc(num)}</span><button type="button" class="bank-copy" data-copy="${esc(num)}">Copiar</button></div>`
       : '<p>Pide el número de cuenta por WhatsApp</p>';
-    return `<div class="pay-choice">${svgIcon(ICONS.transfer.svg)}<div><strong>${esc(b.name)}</strong>${detail}</div></div>`;
+    return `<div class="pay-choice" role="button" tabindex="0" data-method="${esc(b.name)}">${svgIcon(ICONS.transfer.svg)}<div><strong>${esc(b.name)}</strong>${detail}</div></div>`;
   }).join('');
   const payModal = `<div class="pay-modal" id="pay-modal" hidden>
   <div class="pay-backdrop" data-close-modal></div>
@@ -426,7 +426,7 @@ function renderPublic(c) {
       <p id="pay-room-error" class="pay-room-error" hidden></p>
       <ul id="pay-room-math" class="pay-card-math" hidden></ul>
     </div>
-    <div class="pay-choices">${payBankOpts}<div class="pay-choice pay-choice-card"><button type="button" class="pay-card-btn" aria-expanded="false" aria-controls="pay-card-panel">${svgIcon(ICONS.card.svg)}<span>Tarjeta de crédito</span></button></div></div>
+    <div class="pay-choices">${payBankOpts}<div class="pay-choice pay-choice-card" role="button" tabindex="0" data-method="Tarjeta de crédito"><button type="button" class="pay-card-btn" aria-expanded="false" aria-controls="pay-card-panel">${svgIcon(ICONS.card.svg)}<span>Tarjeta de crédito</span></button></div></div>
     <div id="pay-card-panel" class="pay-card-panel" hidden>
       <ul class="pay-card-math">
         <li>Precio: <strong id="pay-card-base"></strong></li>
@@ -436,7 +436,17 @@ function renderPublic(c) {
       <p>Paga desde tu tarjeta o app del Banco Pichincha a la cuenta ${esc(cardAcct)}</p>
       <div class="pay-opt"><div><strong>Banco Pichincha</strong><div class="bank-acct"><span class="bank-num">${esc(cardAcct)}</span><button type="button" class="bank-copy" data-copy="${esc(cardAcct)}">Copiar</button></div></div></div>
     </div>
-    <a class="btn btn-secondary pay-proof" id="pay-proof" href="#contacto"${EXT}>Ya pagué: enviar comprobante por WhatsApp</a>
+    <div id="pay-receipt" hidden>
+      <label class="pay-field" for="pay-file">Sube tu comprobante de pago
+        <input id="pay-file" type="file" accept="image/*,application/pdf">
+      </label>
+      <p class="pay-age-note">Imagen o PDF, máximo 5 MB. Al terminar de subir se abre WhatsApp con el mensaje listo.</p>
+      <img id="pay-preview" alt="Vista previa del comprobante" hidden>
+      <p id="pay-file-name" class="pay-age-note" hidden></p>
+      <p id="pay-receipt-status" class="pay-receipt-ok" hidden></p>
+      <button type="button" class="btn btn-wa" id="pay-share" hidden>Compartir comprobante por WhatsApp</button>
+      <a class="btn btn-secondary pay-proof" id="pay-proof" href="#contacto" hidden>Abrir WhatsApp</a>
+    </div>
   </div>
 </div>`;
   const socials = Object.keys(SOCIAL_ICONS).filter((k) => c.social[k])
@@ -451,7 +461,7 @@ function renderPublic(c) {
 </head><body>
 <header class="nav"><div class="wrap nav-in">
   <a class="brand" href="#inicio"><span class="brand-mark">⛰</span>${esc(g.businessName)}</a>
-  <nav class="links" aria-label="Secciones"><a href="#inicio">Inicio</a><a href="#catalogo">Catálogo</a><a href="#paquetes">Paquetes</a><a href="#promociones">Promociones</a><a href="#redes">Redes sociales</a>
+  <nav class="links" aria-label="Secciones"><a href="#inicio">Inicio</a><a href="#catalogo">Catálogo</a><a href="#paquetes">Paquetes</a><a href="#promociones">Promociones</a><a href="#comentarios">Comentarios</a><a href="#redes">Redes sociales</a>
   <a class="btn btn-wa btn-sm" href="${esc(wa ? `https://wa.me/${wa}` : '#contacto')}"${wa ? EXT : ''}>Escríbenos por WhatsApp</a>
   <a class="btn btn-login btn-sm" href="/admin">Iniciar sesión</a></nav>
 </div></header>
@@ -462,7 +472,7 @@ function renderPublic(c) {
   <p class="lead">${esc(g.heroSubtitle)}</p>
   <div class="hero-cta"><a class="btn btn-wa btn-lg" href="${esc(waLink(wa, g.whatsappMessage))}"${wa ? EXT : ''}>${svgIcon(SOCIAL_ICONS.whatsapp.svg)} ${esc(g.heroCta || 'Escríbenos por WhatsApp')}</a>
   <a class="btn btn-ghost btn-lg" href="#servicios">Ver servicios</a>
-  <nav class="hero-pills" aria-label="Secciones del inicio"><a href="#inicio">Inicio</a><a href="#catalogo">Catálogo</a><a href="#paquetes">Paquetes</a><a href="#promociones">Promociones</a><a href="#redes">Redes sociales</a></nav></div>
+  <nav class="hero-pills" aria-label="Secciones del inicio"><a href="#inicio">Inicio</a><a href="#catalogo">Catálogo</a><a href="#paquetes">Paquetes</a><a href="#promociones">Promociones</a><a href="#comentarios">Comentarios</a><a href="#redes">Redes sociales</a></nav></div>
   <p class="visit-pill">👀 ${formatVisits(visitCount)} visitas</p>
 </div><svg class="hero-mtn" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 120V70l120-30 140 45 170-70 160 60 130-40 200 55 160-75 180 70 180-35v100z"/></svg></section>
 
@@ -506,6 +516,36 @@ ${c.payments.visible ? `<section class="section" id="pagos"><div class="wrap">
   <h2>${esc(g.finalCtaTitle)}</h2><p>${esc(g.finalCtaText)}</p>
   <a class="btn btn-wa btn-lg" href="${esc(waLink(wa, g.whatsappMessage))}"${wa ? EXT : ''}>${svgIcon(SOCIAL_ICONS.whatsapp.svg)} ${esc(g.finalCtaButton || 'Escríbenos')}</a>
 </div></section>
+<section class="section" id="comentarios"><div class="wrap">
+  <div class="sec-head"><h2>Comentarios</h2></div>
+  <div id="comment-guest" class="comment-auth">
+    <button type="button" class="btn btn-primary" id="comment-register-btn">Regístrate</button>
+    <button type="button" class="btn btn-login" id="comment-login-btn">Iniciar sesión</button>
+    <form id="comment-register" class="comment-form" hidden>
+      <label>Nombre<input name="name" required minlength="2" maxlength="80" autocomplete="name"></label>
+      <label>Correo<input name="email" type="email" required maxlength="120" autocomplete="email"></label>
+      <label>Contraseña<input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+      <button class="btn btn-primary" type="submit">Regístrate</button>
+      <p class="comment-msg" role="status"></p>
+    </form>
+    <form id="comment-login" class="comment-form" hidden>
+      <label>Correo<input name="email" type="email" required maxlength="120" autocomplete="email"></label>
+      <label>Contraseña<input name="password" type="password" required autocomplete="current-password"></label>
+      <button class="btn btn-primary" type="submit">Iniciar sesión</button>
+      <p class="comment-msg" role="status"></p>
+    </form>
+  </div>
+  <div id="comment-user" class="comment-auth" hidden>
+    <p>Hola, <strong id="comment-hello"></strong></p>
+    <form id="comment-form" class="comment-form">
+      <label>Tu comentario<textarea name="text" required maxlength="500" rows="3"></textarea></label>
+      <button class="btn btn-accent" type="submit">Publicar</button>
+      <p class="comment-msg" role="status"></p>
+    </form>
+    <button type="button" class="btn btn-login" id="comment-logout">Cerrar sesión</button>
+  </div>
+  <div id="comment-list" class="comment-list"></div>
+</div></section>
 <section class="section" id="redes"><div class="wrap">
   <div class="sec-head"><h2>${esc(s.socialTitle || 'Redes sociales')}</h2><p>Síguenos y escríbenos.</p></div>
   ${socials ? `<div class="socials socials-block">${socials}</div>` : '<p class="empty">Pronto publicaremos nuestras redes.</p>'}
@@ -519,7 +559,7 @@ ${c.payments.visible ? `<section class="section" id="pagos"><div class="wrap">
     ${g.email ? `<li>Correo: <a href="mailto:${esc(g.email)}">${esc(g.email)}</a></li>` : ''}
     ${g.address ? `<li>Dirección: ${esc(g.address)}</li>` : ''}
   </ul></div>
-  <div><h4>Enlaces</h4><ul class="contact"><li><a href="#inicio">Inicio</a></li><li><a href="#catalogo">Catálogo</a></li><li><a href="#paquetes">Paquetes</a></li><li><a href="#promociones">Promociones</a></li><li><a href="#redes">Redes sociales</a></li><li><a class="foot-login" href="/admin">Iniciar sesión</a></li></ul></div>
+  <div><h4>Enlaces</h4><ul class="contact"><li><a href="#inicio">Inicio</a></li><li><a href="#catalogo">Catálogo</a></li><li><a href="#paquetes">Paquetes</a></li><li><a href="#promociones">Promociones</a></li><li><a href="#comentarios">Comentarios</a></li><li><a href="#redes">Redes sociales</a></li><li><a class="foot-login" href="/admin">Iniciar sesión</a></li></ul></div>
 </div><div class="wrap copy">© ${new Date().getFullYear()} ${esc(g.businessName)}. Todos los derechos reservados.</div></footer>
 ${wa ? `<a class="wa-float" href="${esc(waLink(wa, g.whatsappMessage))}"${EXT} aria-label="Escríbenos por WhatsApp">${svgIcon(SOCIAL_ICONS.whatsapp.svg)}<span>WhatsApp</span></a>` : ''}
 ${payModal}
@@ -581,7 +621,7 @@ function sameOrigin(req) {
 }
 
 /* ---------- archivos estáticos ---------- */
-const MIME = { '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.ico': 'image/x-icon' };
+const MIME = { '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.pdf': 'application/pdf', '.ico': 'image/x-icon' };
 function serveFile(res, file, cache) {
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) return send(res, 404, 'No encontrado', 'text/plain; charset=utf-8');
@@ -594,7 +634,43 @@ function detectImage(buf) {
   if (buf.length > 8 && buf.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'png';
   if (buf.length > 6 && (buf.slice(0, 6).toString('ascii') === 'GIF87a' || buf.slice(0, 6).toString('ascii') === 'GIF89a')) return 'gif';
   if (buf.length > 12 && buf.slice(0, 4).toString('ascii') === 'RIFF' && buf.slice(8, 12).toString('ascii') === 'WEBP') return 'webp';
+  if (buf.length > 4 && buf.slice(0, 4).toString('ascii') === '%PDF') return 'pdf';
   return null;
+}
+const CUSTOMERS_FILE = path.join(ROOT, 'customers.json');
+const COMMENTS_FILE = path.join(ROOT, 'comments.json');
+const customerSessions = new Map();
+function readCustomers() { try { const d = JSON.parse(fs.readFileSync(CUSTOMERS_FILE, 'utf8')); return Array.isArray(d) ? d : []; } catch { return []; } }
+function readComments() { try { const d = JSON.parse(fs.readFileSync(COMMENTS_FILE, 'utf8')); return Array.isArray(d) ? d : []; } catch { return []; } }
+function customerFromReq(req) {
+  const t = parseCookies(req).cid;
+  if (!t) return null;
+  const s = customerSessions.get(t);
+  if (!s || s.exp < Date.now()) { customerSessions.delete(t); return null; }
+  return readCustomers().find((c) => c.id === s.id) || null;
+}
+function customerCookie(req, token) { return cookie(req, 'cid', token, token ? SESSION_MS / 1000 : 0); }
+const RECEIPTS_FILE = path.join(ROOT, 'comprobantes.json');
+const RECEIPT_DIR = path.join(UPLOADS, 'comprobantes');
+const receiptHits = new Map();
+function readReceipts() {
+  try {
+    const data = JSON.parse(fs.readFileSync(RECEIPTS_FILE, 'utf8'));
+    return Array.isArray(data) ? data : [];
+  } catch { return []; }
+}
+function addReceipt(entry) {
+  const list = readReceipts();
+  list.unshift(entry);
+  writeJsonAtomic(RECEIPTS_FILE, list.slice(0, 300));
+}
+function receiptLimited(ip) {
+  const now = Date.now();
+  const prev = (receiptHits.get(ip) || []).filter((t) => now - t < 10 * 60 * 1000);
+  if (prev.length >= 8) { receiptHits.set(ip, prev); return true; }
+  prev.push(now);
+  receiptHits.set(ip, prev);
+  return false;
 }
 function cleanupUploads(keep) {
   // borra archivos subidos sin usar hace más de 1 hora
@@ -747,9 +823,85 @@ async function handle(req, res) {
     return send(res, 200, renderPublic(c), null, extra);
   }
   if (m === 'GET' && p.startsWith('/uploads/')) {
-    const name = p.slice(9);
-    if (!/^[a-f0-9]{32}\.(jpg|png|webp|gif)$/.test(name)) return send(res, 404, 'No encontrado', 'text/plain; charset=utf-8');
-    return serveFile(res, path.join(UPLOADS, name), 'public, max-age=86400');
+    const rel = p.slice(9);
+    if (/^comprobantes\/[a-f0-9]{32}\.(jpg|png|webp|gif|pdf)$/.test(rel)) return serveFile(res, path.join(UPLOADS, 'comprobantes', path.basename(rel)), 'public, max-age=86400');
+    if (!/^[a-f0-9]{32}\.(jpg|png|webp|gif)$/.test(rel)) return send(res, 404, 'No encontrado', 'text/plain; charset=utf-8');
+    return serveFile(res, path.join(UPLOADS, rel), 'public, max-age=86400');
+  }
+  if (m === 'POST' && p === '/api/comprobante') {
+    if (!sameOrigin(req)) return sendJson(res, 403, { error: 'Origen no permitido.' });
+    if (receiptLimited(ip)) return sendJson(res, 429, { error: 'Demasiados comprobantes. Espera unos minutos e inténtalo de nuevo.' });
+    const body = await parseBody(req, Math.ceil(MAX_UPLOAD * 1.4) + 8192);
+    const mt = body && /^data:(image\/(?:jpeg|png|webp|gif)|application\/pdf);base64,([A-Za-z0-9+/=\s]+)$/.exec(String(body.data || ''));
+    if (!mt) return sendJson(res, 400, { error: 'Sube una imagen (JPG, PNG, WEBP o GIF) o un PDF.' });
+    const buf = Buffer.from(mt[2], 'base64');
+    if (!buf.length || buf.length > MAX_UPLOAD) return sendJson(res, 413, { error: 'El comprobante supera los 5 MB.' });
+    const ext = detectImage(buf);
+    if (!ext) return sendJson(res, 400, { error: 'El archivo no es una imagen o un PDF válido.' });
+    if ((mt[1] === 'application/pdf') !== (ext === 'pdf')) return sendJson(res, 400, { error: 'El tipo del archivo no coincide con su contenido.' });
+    if (!fs.existsSync(RECEIPT_DIR)) fs.mkdirSync(RECEIPT_DIR, { recursive: true });
+    const name = rand(16) + '.' + ext;
+    fs.writeFileSync(path.join(RECEIPT_DIR, name), buf, { flag: 'wx' });
+    const url = `${PUBLIC_URL}/uploads/comprobantes/${name}`;
+    const product = str(body.product, 140);
+    const total = str(body.total, 40);
+    const method = str(body.method, 80);
+    addReceipt({ id: rand(8), date: new Date().toISOString(), product, total, method, url });
+    return sendJson(res, 200, { ok: true, url });
+  }
+  if (p === '/api/comentarios' && m === 'GET') {
+    const me = customerFromReq(req);
+    const comments = readComments().map((c) => ({ name: c.name, text: c.text, date: c.date }));
+    return sendJson(res, 200, { comments, user: me ? { name: me.name } : null });
+  }
+  if (p === '/api/comentarios/registro' && m === 'POST') {
+    if (!sameOrigin(req)) return sendJson(res, 403, { error: 'Origen no permitido.' });
+    const body = await parseBody(req);
+    const name = str(body && body.name, 80);
+    const email = str(body && body.email, 120).toLowerCase();
+    const pw = String(body && body.password || '');
+    if (name.length < 2 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || pw.length < 8) return sendJson(res, 400, { error: 'Revisa tu nombre, correo y una contraseña de al menos 8 caracteres.' });
+    const customers = readCustomers();
+    if (customers.some((c) => c.email === email)) return sendJson(res, 400, { error: 'Ese correo ya está registrado. Inicia sesión.' });
+    const h = await makeHash(pw);
+    const id = rand(8);
+    customers.push({ id, name, email, salt: h.salt, hash: h.hash, created: new Date().toISOString() });
+    writeJsonAtomic(CUSTOMERS_FILE, customers);
+    const token = rand(32);
+    customerSessions.set(token, { id, exp: Date.now() + SESSION_MS });
+    return sendJson(res, 200, { ok: true, name }, { 'Set-Cookie': customerCookie(req, token) });
+  }
+  if (p === '/api/comentarios/login' && m === 'POST') {
+    if (!sameOrigin(req)) return sendJson(res, 403, { error: 'Origen no permitido.' });
+    const body = await parseBody(req);
+    const email = str(body && body.email, 120).toLowerCase();
+    const user = readCustomers().find((c) => c.email === email);
+    let ok = false;
+    if (user) {
+      const k = await scrypt(String(body && body.password || '').slice(0, 200), user.salt);
+      ok = crypto.timingSafeEqual(k, Buffer.from(user.hash, 'hex'));
+    }
+    if (!ok) return sendJson(res, 400, { error: 'Correo o contraseña incorrectos.' });
+    const token = rand(32);
+    customerSessions.set(token, { id: user.id, exp: Date.now() + SESSION_MS });
+    return sendJson(res, 200, { ok: true, name: user.name }, { 'Set-Cookie': customerCookie(req, token) });
+  }
+  if (p === '/api/comentarios/logout' && m === 'POST') {
+    const t = parseCookies(req).cid;
+    if (t) customerSessions.delete(t);
+    return sendJson(res, 200, { ok: true }, { 'Set-Cookie': customerCookie(req, '') });
+  }
+  if (p === '/api/comentarios' && m === 'POST') {
+    if (!sameOrigin(req)) return sendJson(res, 403, { error: 'Origen no permitido.' });
+    const me = customerFromReq(req);
+    if (!me) return sendJson(res, 401, { error: 'Inicia sesión para comentar.' });
+    const body = await parseBody(req);
+    const text = str(body && body.text, 500);
+    if (text.length < 2) return sendJson(res, 400, { error: 'Escribe un comentario.' });
+    const comments = readComments();
+    comments.unshift({ id: rand(8), name: me.name, text, date: new Date().toISOString() });
+    writeJsonAtomic(COMMENTS_FILE, comments.slice(0, 200));
+    return sendJson(res, 200, { ok: true });
   }
   if (m === 'GET' && /^\/img\/[a-z0-9_-]+\.jpg$/i.test(p)) {
     return serveFile(res, path.join(PUBLIC, 'img', path.basename(p)), 'public, max-age=86400');
@@ -804,6 +956,7 @@ async function handle(req, res) {
     if (m === 'GET' && p === '/admin/api/content') {
       return sendJson(res, 200, { content: sanitizeContent(readContent(), []), visits: visitCount, icons: Object.fromEntries(Object.entries(ICONS).map(([k, v]) => [k, v.label])), iconSvg: Object.fromEntries(Object.entries(ICONS).map(([k, v]) => [k, v.svg])) });
     }
+    if (m === 'GET' && p === '/admin/api/comprobantes') return sendJson(res, 200, { receipts: readReceipts() });
     if (m !== 'POST') return sendJson(res, 405, { error: 'Método no permitido' });
     if (!sameOrigin(req) || !safeEqual(req.headers['x-csrf-token'] || '', sess.csrf)) return sendJson(res, 403, { error: 'Token de seguridad inválido. Recarga la página.' });
 

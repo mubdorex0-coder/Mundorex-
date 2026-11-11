@@ -1,6 +1,9 @@
 auth.json
 setup-code.txt
 visits.json
+comprobantes.json
+customers.json
+comments.json
 node_modules/
 uploads/*
 !uploads/.gitkeep

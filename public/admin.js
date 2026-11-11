@@ -125,7 +125,7 @@
   var TABS = [
     ['general', 'General y encabezado', '⚙️'], ['servicios', 'Servicios', '🧭'], ['productos', 'Productos', '🛍️'],
     ['promociones', 'Promociones', '🎁'], ['beneficios', 'Beneficios', '⭐'], ['testimonios', 'Testimonios', '💬'], ['pagos', 'Métodos de pago', '💳'],
-    ['redes', 'Redes sociales', '🔗'], ['seguridad', 'Cambiar contraseña', '🔒']];
+    ['redes', 'Redes sociales', '🔗'], ['comprobantes', 'Comprobantes', '🧾'], ['seguridad', 'Cambiar contraseña', '🔒']];
 
   var views = {
     general: function () {
@@ -256,6 +256,26 @@
         wrap.appendChild(bcard);
       }
       draw(); return [wrap];
+    },
+    comprobantes: function () {
+      var wrap = h('div');
+      wrap.appendChild(h('p', { class: 'muted', text: 'Cargando comprobantes…' }));
+      api('/admin/api/comprobantes').then(function (j) {
+        wrap.textContent = '';
+        var rows = j.receipts || [];
+        if (!rows.length) { wrap.appendChild(h('p', { class: 'muted', text: 'Todavía no hay comprobantes.' })); return; }
+        rows.forEach(function (r) {
+          var when = '';
+          try { when = r.date ? new Date(r.date).toLocaleString('es-EC') : ''; } catch (e) { when = r.date || ''; }
+          wrap.appendChild(card(r.product || 'Pago', [
+            h('p', { text: when }),
+            h('p', { text: 'Total: ' + (r.total || '—') }),
+            r.method ? h('p', { text: 'Método: ' + r.method }) : null,
+            r.url ? h('a', { href: r.url, target: '_blank', rel: 'noopener', text: 'Ver comprobante' }) : null
+          ]));
+        });
+      }).catch(function (e) { wrap.textContent = ''; wrap.appendChild(h('p', { class: 'muted', text: e.message })); });
+      return [wrap];
     },
     redes: function () {
       var so = state.social;

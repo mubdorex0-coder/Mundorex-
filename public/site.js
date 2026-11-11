@@ -10,6 +10,9 @@
   var lastFocus = null;
   var currentBuy = null;
   var roomTried = false;
+  var payMethod = '';
+  var chosenFile = null;
+  var lastQuote = null;
 
   function copyText(text) {
     if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
@@ -147,6 +150,7 @@
       });
     }
     var roomName = opt.textContent;
+    lastQuote = { room: true, product: roomName, season: seasonName, adults: adults, kids: kids, vehicles: vehicles, lines: lines, total: money(total) };
     var text = 'Hola, ya pagué ' + roomName + '. Temporada ' + seasonName + '. Adultos y niños de 5 años en adelante: ' + adults + '. Niños menores de 5 años: ' + kids + '. Vehículos: ' + vehicles + '. ' + lines.join('. ') + '. Te envío el comprobante.';
     var num = currentBuy.getAttribute('data-wa') || '';
     if (proof) {
@@ -168,12 +172,108 @@
     if (panel) panel.hidden = !open;
     applyProof();
   }
+  function productQuote() {
+    var name = (currentBuy && currentBuy.getAttribute('data-name')) || '';
+    var plain = (currentBuy && currentBuy.getAttribute('data-price')) || '';
+    var base = (currentBuy && currentBuy.getAttribute('data-base')) || '';
+    var feeAmt = (currentBuy && currentBuy.getAttribute('data-fee-amt')) || '';
+    var pct = (currentBuy && currentBuy.getAttribute('data-fee-pct')) || '15';
+    var lines = [];
+    var total = plain;
+    if (cardOpen()) {
+      if (base) lines.push('Precio: ' + base);
+      if (feeAmt) lines.push('Comisión tarjeta (' + pct + '%): ' + feeAmt);
+      total = (currentBuy && currentBuy.getAttribute('data-total')) || plain;
+      lines.push('Total a pagar: ' + total);
+    } else if (plain) lines.push('Total a pagar: ' + plain);
+    lastQuote = { room: false, product: name, lines: lines, total: total };
+    return lastQuote;
+  }
+  function composeReceipt(url) {
+    var q = lastQuote;
+    if (!q) return '';
+    var out = ['✅ Comprobante de pago enviado', q.product];
+    if (q.room) {
+      out.push('Temporada: ' + q.season);
+      out.push('Adultos y niños de 5 años en adelante: ' + q.adults);
+      out.push('Niños menores de 5 años: ' + q.kids);
+      out.push('Vehículos: ' + q.vehicles);
+    }
+    out.push('Método de pago: ' + payMethod);
+    (q.lines || []).forEach(function (line) { out.push(line); });
+    out.push('Comprobante: ' + url);
+    return out.join('\n');
+  }
+  function waHrefFor(text) {
+    var num = (currentBuy && currentBuy.getAttribute('data-wa')) || '593968306412';
+    return 'https://wa.me/' + num + '?text=' + encodeURIComponent(text);
+  }
+  function openWhatsApp(url) {
+    var fallback = document.getElementById('pay-proof');
+    if (fallback) { fallback.hidden = false; fallback.textContent = 'Abrir WhatsApp'; fallback.setAttribute('href', url); }
+    var mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+    if (mobile) { location.href = url; return; }
+    var pop = window.open(url, '_blank', 'noopener');
+    if (!pop) location.href = url;
+  }
+  function resetReceipt() {
+    payMethod = '';
+    chosenFile = null;
+    lastQuote = null;
+    if (!modal) return;
+    modal.querySelectorAll('.pay-choice.on').forEach(function (el) { el.classList.remove('on'); });
+    var box = document.getElementById('pay-receipt');
+    var file = document.getElementById('pay-file');
+    var preview = document.getElementById('pay-preview');
+    var nameEl = document.getElementById('pay-file-name');
+    var status = document.getElementById('pay-receipt-status');
+    var share = document.getElementById('pay-share');
+    var open = document.getElementById('pay-proof');
+    if (box) box.hidden = true;
+    if (file) file.value = '';
+    if (preview) { preview.hidden = true; preview.removeAttribute('src'); }
+    if (nameEl) nameEl.hidden = true;
+    if (status) { status.hidden = true; status.textContent = ''; }
+    if (share) share.hidden = true;
+    if (open) { open.hidden = true; open.setAttribute('href', '#contacto'); }
+  }
+  function selectMethod(name) {
+    payMethod = name || '';
+    if (!modal) return;
+    modal.querySelectorAll('.pay-choice').forEach(function (el) {
+      el.classList.toggle('on', el.getAttribute('data-method') === payMethod);
+    });
+    var box = document.getElementById('pay-receipt');
+    if (box) box.hidden = !payMethod;
+    setCardOpen(payMethod === 'Tarjeta de crédito');
+  }
+  function uploadReceipt(file) {
+    var status = document.getElementById('pay-receipt-status');
+    if (isRoom()) { roomTried = true; if (!roomQuote()) { if (status) { status.hidden = false; status.textContent = 'Completa la reserva antes de subir el comprobante.'; } return; } }
+    else productQuote();
+    if (!lastQuote || !payMethod) return;
+    if (status) { status.hidden = false; status.textContent = 'Subiendo comprobante…'; }
+    var reader = new FileReader();
+    reader.onload = function () {
+      fetch('/api/comprobante', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: reader.result, product: lastQuote.product, total: lastQuote.total, method: payMethod }) })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'No se pudo subir el comprobante.'); return j; }); })
+        .then(function (j) {
+          var text = composeReceipt(j.url);
+          var href = waHrefFor(text);
+          if (status) { status.hidden = false; status.textContent = '¡Comprobante recibido! Te llevamos a WhatsApp…'; }
+          openWhatsApp(href);
+        })
+        .catch(function (e) { if (status) { status.hidden = false; status.textContent = e.message; } });
+    };
+    reader.readAsDataURL(file);
+  }
   function openModal(btn) {
     if (!modal || !dialog) return;
     lastFocus = btn;
     currentBuy = btn;
     if (title) title.textContent = btn.getAttribute('data-name') || '';
     if (price) price.textContent = btn.getAttribute('data-price') || '';
+    resetReceipt();
     resetRoom();
     fillCardMath(btn);
     setCardOpen(false);
@@ -203,14 +303,36 @@
     }
     var buy = e.target.closest('.buy-open');
     if (buy) { openModal(buy); return; }
-    var cardBtn = e.target.closest('.pay-card-btn');
-    if (cardBtn) { setCardOpen(cardBtn.getAttribute('aria-expanded') !== 'true'); return; }
-    if (e.target.closest('#pay-proof') && isRoom()) {
-      roomTried = true;
-      if (!roomQuote()) e.preventDefault();
+    var choice = e.target.closest('.pay-choice');
+    if (choice && modal && modal.contains(choice) && !e.target.closest('.bank-copy')) {
+      selectMethod(choice.getAttribute('data-method') || '');
+      return;
+    }
+    if (e.target.closest('#pay-share') && chosenFile && navigator.share) {
+      var shareText = lastQuote ? composeReceipt('') : 'Comprobante de pago';
+      navigator.share({ files: [chosenFile], title: 'Comprobante de pago', text: shareText }).catch(function () {});
       return;
     }
     if (e.target.closest('[data-close-modal]')) closeModal();
+  });
+  document.addEventListener('change', function (e) {
+    if (!e.target || e.target.id !== 'pay-file') return;
+    var file = e.target.files && e.target.files[0];
+    var status = document.getElementById('pay-receipt-status');
+    var preview = document.getElementById('pay-preview');
+    var nameEl = document.getElementById('pay-file-name');
+    var share = document.getElementById('pay-share');
+    chosenFile = file || null;
+    if (!file) return;
+    var image = file.type.indexOf('image/') === 0;
+    if (!image && file.type !== 'application/pdf') { if (status) { status.hidden = false; status.textContent = 'Sube una imagen o un PDF.'; } return; }
+    if (file.size > 5 * 1024 * 1024) { if (status) { status.hidden = false; status.textContent = 'El comprobante supera los 5 MB.'; } return; }
+    if (preview) {
+      if (image) { preview.src = URL.createObjectURL(file); preview.hidden = false; if (nameEl) nameEl.hidden = true; }
+      else { preview.hidden = true; if (nameEl) { nameEl.hidden = false; nameEl.textContent = file.name; } }
+    }
+    if (share) share.hidden = !(navigator.canShare && navigator.canShare({ files: [file] }));
+    uploadReceipt(file);
   });
   document.addEventListener('input', function (e) {
     if (e.target.closest && e.target.closest('#pay-room')) roomQuote();
@@ -234,4 +356,60 @@
     if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   });
+
+  var guest = document.getElementById('comment-guest');
+  var userBox = document.getElementById('comment-user');
+  var list = document.getElementById('comment-list');
+  function commentMsg(form, text) { var p = form && form.querySelector('.comment-msg'); if (p) p.textContent = text || ''; }
+  function showComments(data) {
+    var logged = !!(data && data.user);
+    if (guest) guest.hidden = logged;
+    if (userBox) userBox.hidden = !logged;
+    var hello = document.getElementById('comment-hello');
+    if (hello && logged) hello.textContent = data.user.name;
+    if (!list) return;
+    list.textContent = '';
+    (data.comments || []).forEach(function (c) {
+      var art = document.createElement('article');
+      var h = document.createElement('h3');
+      h.textContent = c.name || '';
+      var p = document.createElement('p');
+      p.textContent = c.text || '';
+      art.appendChild(h); art.appendChild(p); list.appendChild(art);
+    });
+  }
+  function loadComments() {
+    fetch('/api/comentarios', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(showComments).catch(function () {});
+  }
+  function commentPost(url, body) {
+    return fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'No se pudo completar.'); return j; }); });
+  }
+  var regBtn = document.getElementById('comment-register-btn');
+  var logBtn = document.getElementById('comment-login-btn');
+  var regForm = document.getElementById('comment-register');
+  var logForm = document.getElementById('comment-login');
+  if (regBtn && regForm) regBtn.addEventListener('click', function () { regForm.hidden = false; if (logForm) logForm.hidden = true; });
+  if (logBtn && logForm) logBtn.addEventListener('click', function () { logForm.hidden = false; if (regForm) regForm.hidden = true; });
+  if (regForm) regForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var fd = new FormData(regForm);
+    commentPost('/api/comentarios/registro', { name: fd.get('name'), email: fd.get('email'), password: fd.get('password') })
+      .then(function () { commentMsg(regForm, ''); loadComments(); }).catch(function (err) { commentMsg(regForm, err.message); });
+  });
+  if (logForm) logForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var fd = new FormData(logForm);
+    commentPost('/api/comentarios/login', { email: fd.get('email'), password: fd.get('password') })
+      .then(function () { commentMsg(logForm, ''); loadComments(); }).catch(function (err) { commentMsg(logForm, err.message); });
+  });
+  var postForm = document.getElementById('comment-form');
+  if (postForm) postForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var fd = new FormData(postForm);
+    commentPost('/api/comentarios', { text: fd.get('text') }).then(function () { postForm.reset(); commentMsg(postForm, 'Comentario publicado.'); loadComments(); }).catch(function (err) { commentMsg(postForm, err.message); });
+  });
+  var outBtn = document.getElementById('comment-logout');
+  if (outBtn) outBtn.addEventListener('click', function () { commentPost('/api/comentarios/logout', {}).then(loadComments); });
+  if (guest) loadComments();
 })();
