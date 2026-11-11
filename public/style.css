@@ -23,20 +23,14 @@ h1,h2,h3,h4{line-height:1.2;margin:0 0 .5em}
 .btn-login:hover{color:var(--primary);border-color:var(--primary);background:var(--soft);transform:none;box-shadow:none}
 .btn-lg{padding:.95em 1.6em;font-size:1.05rem}
 .page-bg{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:#061410}
-.page-bg-slide{position:absolute;inset:-12%;background-position:center;background-size:cover;opacity:0;will-change:transform,opacity;animation:bgFade 20s linear infinite,kenA 28s ease-in-out infinite alternate}
-.page-bg-slide.a{background-image:url('/img/cascada-noche-1.jpg')}
-.page-bg-slide.b{background-image:url('/img/cascada-noche-2.jpg');animation-name:bgFade,kenB;animation-delay:-10s,-8s}
-.page-bg-shade{position:absolute;inset:0;background:rgba(6,16,14,.5)}
-.page-bg-mist{position:absolute;inset:-8%;opacity:.35;background:radial-gradient(ellipse at 18% 78%,rgba(255,255,255,.16),transparent 46%),radial-gradient(ellipse at 82% 24%,rgba(255,255,255,.1),transparent 42%);animation:mistDrift 20s ease-in-out infinite alternate}
-@keyframes bgFade{0%{opacity:0}10%{opacity:1}50%{opacity:1}60%{opacity:0}100%{opacity:0}}
-@keyframes kenA{from{transform:scale(1.04) translate3d(2%,1%,0)}to{transform:scale(1.14) translate3d(-2.5%,-1.5%,0)}}
-@keyframes kenB{from{transform:scale(1.12) translate3d(-2%,-1%,0)}to{transform:scale(1.04) translate3d(2.5%,1.2%,0)}}
-@keyframes mistDrift{from{transform:translate3d(-1.5%,0,0)}to{transform:translate3d(1.5%,-1%,0)}}
+.page-bg::before{content:"";position:absolute;inset:-10%;background:url('/img/cascada-noche-1.jpg') center/cover no-repeat;animation:kenPage 36s ease-in-out infinite alternate;will-change:transform}
+.page-bg-shade{position:absolute;inset:0;background:rgba(6,16,14,.45)}
+.page-bg canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+@keyframes kenPage{from{transform:scale(1.05) translate3d(1.6%,.6%,0)}to{transform:scale(1.14) translate3d(-2.2%,-1.4%,0)}}
 .nav,main,.footer,.wa-float{position:relative;z-index:1}
 @media (prefers-reduced-motion:reduce){
-  .page-bg-slide{animation:none;opacity:0;transform:none;inset:0}
-  .page-bg-slide.a{opacity:1}
-  .page-bg-mist{display:none}
+  .page-bg::before{animation:none;transform:none;inset:0}
+  .hero::before{animation:none;transform:none;inset:0}
 }
 /* nav */
 .nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
@@ -55,9 +49,10 @@ h1,h2,h3,h4{line-height:1.2;margin:0 0 .5em}
   .links .btn-login{background:#fff;align-self:auto}
 }
 /* hero */
-.hero{position:relative;color:#fff;padding:88px 0 120px;overflow:hidden;background:transparent}
-.hero.has-img::before{content:"";position:absolute;inset:0;z-index:0;background:var(--hero-img) center/cover no-repeat}
-.hero::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(6,20,18,.72) 0%,rgba(6,20,18,.48) 52%,rgba(6,20,18,.28) 100%)}
+.hero{position:relative;color:#fff;padding:88px 0 120px;overflow:hidden;background:#061410}
+.hero::before{content:"";position:absolute;inset:-6%;z-index:0;background:var(--hero-img) center/cover no-repeat;animation:kenHero 34s ease-in-out infinite alternate;will-change:transform}
+.hero::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(6,20,18,.78) 0%,rgba(6,20,18,.5) 52%,rgba(6,20,18,.3) 100%)}
+@keyframes kenHero{from{transform:scale(1.03) translate3d(.6%,0,0)}to{transform:scale(1.1) translate3d(-1.6%,-1%,0)}}
 .hero-in{position:relative;z-index:2;max-width:820px}
 .eyebrow{display:inline-block;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);padding:.35em .9em;border-radius:999px;font-size:.9rem;font-weight:600;margin:0 0 1.2em}
 .hero h1{font-size:clamp(2rem,5.5vw,3.6rem);letter-spacing:-.02em}
@@ -242,7 +237,6 @@ body.modal-open{overflow:hidden}
 /* whatsapp flotante (móvil) */
 .wa-float{display:none}
 @media (max-width:820px){
-  .page-bg-slide{inset:-8%}
   .wa-float{display:flex;align-items:center;gap:8px;position:fixed;right:16px;bottom:16px;z-index:60;background:var(--wa);color:#05361a;font-weight:800;text-decoration:none;padding:12px 18px;border-radius:999px;box-shadow:0 10px 25px rgba(0,0,0,.25)}
   .wa-float .ico{width:22px;height:22px}
   .footer{padding-bottom:84px}

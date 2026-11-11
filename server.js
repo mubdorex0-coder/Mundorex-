@@ -507,7 +507,7 @@ function renderPublic(c) {
 </div>`;
   const socials = Object.keys(SOCIAL_ICONS).filter((k) => c.social[k])
     .map((k) => `<a class="social" href="${esc(c.social[k])}"${EXT} aria-label="${SOCIAL_ICONS[k].label}" title="${SOCIAL_ICONS[k].label}">${svgIcon(SOCIAL_ICONS[k].svg)}</a>`).join('');
-  const heroUrl = g.heroImage || '';
+  const heroUrl = g.heroImage || '/img/cascada-noche-2.jpg';
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(pageTitle)}</title>
@@ -515,7 +515,7 @@ function renderPublic(c) {
 <link rel="stylesheet" href="/style.css?v=${ASSET_V}">
 <style>:root{--primary:${g.primaryColor};--accent:${g.accentColor}}</style>
 </head><body>
-<div class="page-bg" aria-hidden="true"><div class="page-bg-slide a"></div><div class="page-bg-slide b"></div><div class="page-bg-shade"></div><div class="page-bg-mist"></div></div>
+<div class="page-bg" aria-hidden="true"><div class="page-bg-shade"></div><canvas id="mist"></canvas></div>
 <header class="nav"><div class="wrap nav-in">
   <a class="brand" href="#inicio"><span class="brand-mark">⛰</span>${esc(g.businessName)}</a>
   <nav class="links" aria-label="Secciones"><a href="#inicio">Inicio</a><a href="#catalogo">Catálogo</a><a href="#paquetes">Paquetes</a><a href="#promociones">Promociones</a><a href="#comentarios">Comentarios</a><a href="#redes">Redes sociales</a>
@@ -523,7 +523,7 @@ function renderPublic(c) {
   <a class="btn btn-login btn-sm" href="/admin">Iniciar sesión</a></nav>
 </div></header>
 <main id="inicio">
-<section class="hero${heroUrl ? ' has-img' : ''}"${heroUrl ? ` style="--hero-img:url('${esc(heroUrl)}')"` : ''}><div class="wrap hero-in">
+<section class="hero" style="--hero-img:url('${esc(heroUrl)}')"><div class="wrap hero-in">
   ${g.heroEyebrow ? `<p class="eyebrow">${esc(g.heroEyebrow)}</p>` : ''}
   <h1>${esc(g.heroTitle)}</h1>
   <p class="lead">${esc(g.heroSubtitle)}</p>

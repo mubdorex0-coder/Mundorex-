@@ -427,4 +427,32 @@
   var outBtn = document.getElementById('comment-logout');
   if (outBtn) outBtn.addEventListener('click', function () { commentPost('/api/comentarios/logout', {}).then(loadComments); });
   if (guest) loadComments();
+
+  var mist = document.getElementById('mist');
+  if (mist && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+    var ctx = mist.getContext('2d');
+    var drops = [];
+    function mistCount() { return window.innerWidth <= 820 ? 30 : 46; }
+    function mistSize() { mist.width = window.innerWidth; mist.height = window.innerHeight; }
+    function mistSeed() {
+      mistSize();
+      drops = [];
+      for (var i = 0; i < mistCount(); i++) drops.push({ x: Math.random() * mist.width, y: Math.random() * mist.height, r: 1 + Math.random() * 2.6, a: 0.06 + Math.random() * 0.16, vy: -0.12 - Math.random() * 0.28, vx: (Math.random() - 0.5) * 0.18 });
+    }
+    function mistFrame() {
+      ctx.clearRect(0, 0, mist.width, mist.height);
+      drops.forEach(function (d) {
+        d.y += d.vy; d.x += d.vx;
+        if (d.y < -6) { d.y = mist.height + 6; d.x = Math.random() * mist.width; }
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(255,255,255,' + d.a + ')';
+        ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      requestAnimationFrame(mistFrame);
+    }
+    mistSeed();
+    window.addEventListener('resize', mistSeed);
+    requestAnimationFrame(mistFrame);
+  }
 })();
