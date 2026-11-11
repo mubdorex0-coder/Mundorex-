@@ -515,7 +515,7 @@ function renderPublic(c) {
 <link rel="stylesheet" href="/style.css?v=${ASSET_V}">
 <style>:root{--primary:${g.primaryColor};--accent:${g.accentColor}}</style>
 </head><body>
-<div class="page-bg" aria-hidden="true"><div class="page-bg-shade"></div><canvas id="mist"></canvas></div>
+<div class="page-bg" aria-hidden="true"><div class="page-bg-slide a"></div><div class="page-bg-slide b"></div><div class="page-bg-shade"></div><canvas id="mist"></canvas></div>
 <header class="nav"><div class="wrap nav-in">
   <a class="brand" href="#inicio"><span class="brand-mark">⛰</span>${esc(g.businessName)}</a>
   <nav class="links" aria-label="Secciones"><a href="#inicio">Inicio</a><a href="#catalogo">Catálogo</a><a href="#paquetes">Paquetes</a><a href="#promociones">Promociones</a><a href="#comentarios">Comentarios</a><a href="#redes">Redes sociales</a>
