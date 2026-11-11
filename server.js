@@ -7,9 +7,17 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { execSync } = require('child_process');
 const { URL } = require('url');
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
+function assetVersion() {
+  try {
+    const sha = execSync('git rev-parse --short HEAD', { cwd: __dirname, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    return sha || String(Date.now());
+  } catch { return String(Date.now()); }
+}
+const ASSET_V = assetVersion();
 const ROOT = __dirname;
 const CONTENT_FILE = path.join(ROOT, 'content.json');
 const AUTH_FILE = path.join(ROOT, 'auth.json');
@@ -438,12 +446,11 @@ function renderPublic(c) {
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(pageTitle)}</title>
 <meta name="description" content="${esc(g.heroSubtitle)}">
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/style.css?v=${ASSET_V}">
 <style>:root{--primary:${g.primaryColor};--accent:${g.accentColor}}</style>
 </head><body>
 <header class="nav"><div class="wrap nav-in">
   <a class="brand" href="#inicio"><span class="brand-mark">⛰</span>${esc(g.businessName)}</a>
-  <input type="checkbox" id="menu" class="menu-cb" aria-label="Abrir menú"><label for="menu" class="menu-btn" aria-hidden="true"><span></span><span></span><span></span></label>
   <nav class="links" aria-label="Secciones"><a href="#inicio">Inicio</a><a href="#catalogo">Catálogo</a><a href="#paquetes">Paquetes</a><a href="#promociones">Promociones</a><a href="#redes">Redes sociales</a>
   <a class="btn btn-wa btn-sm" href="${esc(wa ? `https://wa.me/${wa}` : '#contacto')}"${wa ? EXT : ''}>Escríbenos por WhatsApp</a>
   <a class="btn btn-login btn-sm" href="/admin">Iniciar sesión</a></nav>
@@ -454,7 +461,8 @@ function renderPublic(c) {
   <h1>${esc(g.heroTitle)}</h1>
   <p class="lead">${esc(g.heroSubtitle)}</p>
   <div class="hero-cta"><a class="btn btn-wa btn-lg" href="${esc(waLink(wa, g.whatsappMessage))}"${wa ? EXT : ''}>${svgIcon(SOCIAL_ICONS.whatsapp.svg)} ${esc(g.heroCta || 'Escríbenos por WhatsApp')}</a>
-  <a class="btn btn-ghost btn-lg" href="#servicios">Ver servicios</a></div>
+  <a class="btn btn-ghost btn-lg" href="#servicios">Ver servicios</a>
+  <nav class="hero-pills" aria-label="Secciones del inicio"><a href="#inicio">Inicio</a><a href="#catalogo">Catálogo</a><a href="#paquetes">Paquetes</a><a href="#promociones">Promociones</a><a href="#redes">Redes sociales</a></nav></div>
   <p class="visit-pill">👀 ${formatVisits(visitCount)} visitas</p>
 </div><svg class="hero-mtn" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 120V70l120-30 140 45 170-70 160 60 130-40 200 55 160-75 180 70 180-35v100z"/></svg></section>
 
@@ -515,14 +523,14 @@ ${c.payments.visible ? `<section class="section" id="pagos"><div class="wrap">
 </div><div class="wrap copy">© ${new Date().getFullYear()} ${esc(g.businessName)}. Todos los derechos reservados.</div></footer>
 ${wa ? `<a class="wa-float" href="${esc(waLink(wa, g.whatsappMessage))}"${EXT} aria-label="Escríbenos por WhatsApp">${svgIcon(SOCIAL_ICONS.whatsapp.svg)}<span>WhatsApp</span></a>` : ''}
 ${payModal}
-<script src="/site.js" defer></script>
+<script src="/site.js?v=${ASSET_V}" defer></script>
 </body></html>`;
 }
 
 /* ---------- páginas de administración ---------- */
 function adminShell(title, body, extraHead) {
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex"><title>${esc(title)}</title><link rel="stylesheet" href="/admin.css">${extraHead || ''}</head><body>${body}</body></html>`;
+<meta name="robots" content="noindex"><title>${esc(title)}</title><link rel="stylesheet" href="/admin.css?v=${ASSET_V}">${extraHead || ''}</head><body>${body}</body></html>`;
 }
 const OAUTH_ICONS = {
   google: '<svg class="oauth-ico" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 8 3.1l5.7-5.7C34.2 6.1 29.4 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 12 24 12c3.1 0 5.8 1.2 8 3.1l5.7-5.7C34.2 6.1 29.4 4 24 4 16.3 4 9.6 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 10-2 13.6-5.2l-6.3-5.3C29.2 35.1 26.7 36 24 36c-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1.1 3.2-3.5 5.7-6.7 7.1l6.3 5.3C37.4 38.4 44 33 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>',
@@ -559,7 +567,7 @@ function panelPage(sess) {
   const a = readAuth();
   return adminShell('Panel de administración', `<div id="app" data-user="${esc(a.username)}" data-visits="${visitCount}"><p class="loading">Cargando panel…</p></div>
 <form id="logout" method="post" action="/admin/logout" hidden><input type="hidden" name="csrf" value="${esc(sess.csrf)}"></form>
-<script src="/admin.js" defer></script>`, `<meta name="csrf" content="${esc(sess.csrf)}">`);
+<script src="/admin.js?v=${ASSET_V}" defer></script>`, `<meta name="csrf" content="${esc(sess.csrf)}">`);
 }
 function preCsrf(req, res) {
   let t = parseCookies(req).pcsrf;
