@@ -331,8 +331,10 @@
     },
     comentarios: function () {
       var wrap = h('div');
+      var durableNote = 'Guardado permanente: ' + (app.dataset.durable === '1' ? 'activado' : 'desactivado');
       function draw(rows) {
         wrap.textContent = '';
+        wrap.appendChild(h('p', { class: 'muted small', text: durableNote }));
         if (!rows.length) { wrap.appendChild(h('p', { class: 'muted', text: 'Todavía no hay comentarios.' })); return; }
         rows.forEach(function (c) {
           var when = '';
@@ -347,8 +349,13 @@
           ]));
         });
       }
+      wrap.appendChild(h('p', { class: 'muted small', text: durableNote }));
       wrap.appendChild(h('p', { class: 'muted', text: 'Cargando comentarios…' }));
-      api('/admin/api/comentarios').then(function (j) { draw(j.comments || []); }).catch(function (e) { wrap.textContent = e.message; });
+      api('/admin/api/comentarios').then(function (j) { draw(j.comments || []); }).catch(function (e) {
+        wrap.textContent = '';
+        wrap.appendChild(h('p', { class: 'muted small', text: durableNote }));
+        wrap.appendChild(h('p', { text: e.message }));
+      });
       return [wrap];
     },
     comprobantes: function () {

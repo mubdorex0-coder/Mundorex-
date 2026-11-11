@@ -485,8 +485,12 @@
     });
     if (logged) fillAuthor(data.user.name);
   }
+  var commentsReq = 0;
   function loadComments() {
-    fetch('/api/comentarios', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(showComments).catch(function () {});
+    var reqId = ++commentsReq;
+    return fetch('/api/comentarios', { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (data) {
+      if (reqId === commentsReq) showComments(data);
+    }).catch(function () {});
   }
   function commentPost(url, body) {
     return fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })

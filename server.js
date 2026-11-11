@@ -9,6 +9,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { execSync } = require('child_process');
 const { URL } = require('url');
+const githubData = require('./github-data');
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 function assetVersion() {
@@ -46,6 +47,18 @@ function writeJsonAtomic(file, data) {
   const tmp = file + '.' + rand(4) + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2), { mode: 0o600 });
   fs.renameSync(tmp, file);
+}
+const dataStore = githubData.create({ root: ROOT });
+function saveData(file, data) {
+  writeJsonAtomic(file, data);
+  dataStore.schedule(path.basename(file));
+}
+function shutdown() {
+  flushVisits();
+  const done = dataStore.flushNow();
+  const timer = setTimeout(() => process.exit(0), 4000);
+  if (timer.unref) timer.unref();
+  Promise.resolve(done).then(() => process.exit(0), () => process.exit(0));
 }
 const readContent = () => JSON.parse(fs.readFileSync(CONTENT_FILE, 'utf8'));
 const authExists = () => fs.existsSync(AUTH_FILE);
@@ -103,8 +116,8 @@ function noteVisit(req) {
   scheduleVisitWrite();
   return true;
 }
-process.on('SIGTERM', () => { flushVisits(); process.exit(0); });
-process.on('SIGINT', () => { flushVisits(); process.exit(0); });
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
 const BASE_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
@@ -762,7 +775,7 @@ function authPage(kind, csrf, msg, ok) {
 }
 function panelPage(sess) {
   const a = readAuth();
-  return adminShell('Panel de administración', `<div id="app" data-user="${esc(a.username)}" data-visits="${visitCount}"><p class="loading">Cargando panel…</p></div>
+  return adminShell('Panel de administración', `<div id="app" data-user="${esc(a.username)}" data-visits="${visitCount}" data-durable="${dataStore.tokenSet ? '1' : '0'}"><p class="loading">Cargando panel…</p></div>
 <form id="logout" method="post" action="/admin/logout" hidden><input type="hidden" name="csrf" value="${esc(sess.csrf)}"></form>
 <script src="/admin.js?v=${ASSET_V}" defer></script>`, `<meta name="csrf" content="${esc(sess.csrf)}">`);
 }
@@ -829,7 +842,7 @@ function readReceipts() {
 function addReceipt(entry) {
   const list = readReceipts();
   list.unshift(entry);
-  writeJsonAtomic(RECEIPTS_FILE, list.slice(0, 300));
+  saveData(RECEIPTS_FILE, list.slice(0, 300));
 }
 function receiptLimited(ip) {
   const now = Date.now();
@@ -1042,7 +1055,7 @@ async function handle(req, res) {
     const h = await makeHash(pw);
     const id = rand(8);
     customers.push({ id, name, email, username, salt: h.salt, hash: h.hash, created: new Date().toISOString() });
-    writeJsonAtomic(CUSTOMERS_FILE, customers);
+    saveData(CUSTOMERS_FILE, customers);
     const token = rand(32);
     customerSessions.set(token, { id, exp: Date.now() + SESSION_MS });
     return sendJson(res, 200, { ok: true, name }, { 'Set-Cookie': customerCookie(req, token) });
@@ -1080,7 +1093,7 @@ async function handle(req, res) {
     if (text.length < 2) return sendJson(res, 400, { error: 'Escribe un comentario.' });
     const comments = readComments();
     comments.unshift({ id: rand(8), name: displayName, text, stars: stars >= 1 && stars <= 5 ? stars : 0, section, date: new Date().toISOString() });
-    writeJsonAtomic(COMMENTS_FILE, comments.slice(0, 200));
+    saveData(COMMENTS_FILE, comments.slice(0, 200));
     return sendJson(res, 200, { ok: true });
   }
   if (m === 'GET' && /^\/img\/[a-z0-9_-]+\.jpg$/i.test(p)) {
@@ -1169,7 +1182,7 @@ async function handle(req, res) {
     if (p === '/admin/api/comentarios/delete') {
       const body = await parseBody(req);
       const id = str(body && body.id, 40);
-      writeJsonAtomic(COMMENTS_FILE, readComments().filter((c) => c.id !== id));
+      saveData(COMMENTS_FILE, readComments().filter((c) => c.id !== id));
       return sendJson(res, 200, { ok: true });
     }
     if (p === '/admin/api/password') {
@@ -1207,11 +1220,16 @@ async function handle(req, res) {
   return send(res, 404, '<!doctype html><meta charset="utf-8"><title>No encontrado</title><p style="font-family:sans-serif">Página no encontrada. <a href="/">Volver al inicio</a></p>');
 }
 
-http.createServer((req, res) => {
+const server = http.createServer((req, res) => {
   handle(req, res).catch((e) => {
     if (res.headersSent) return res.end();
     if (e && e.code === 413) return sendJson(res, 413, { error: 'El archivo o los datos son demasiado grandes.' });
     console.error(e);
     send(res, 500, 'Error interno', 'text/plain; charset=utf-8');
   });
-}).listen(PORT, () => { console.log(`Página lista en http://localhost:${PORT}  ·  Panel: http://localhost:${PORT}/admin`); });
+});
+dataStore.pullAll().catch((err) => {
+  console.error('No se pudieron cargar los datos permanentes:', dataStore.safeMessage(err));
+}).then(() => {
+  server.listen(PORT, () => { console.log(`Página lista en http://localhost:${PORT}  ·  Panel: http://localhost:${PORT}/admin`); });
+});

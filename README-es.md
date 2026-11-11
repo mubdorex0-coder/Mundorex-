@@ -44,7 +44,7 @@ Panel → **"Cambiar contraseña"** → escribe tu contraseña actual, la nueva 
 La página necesita un servidor con **Node.js**, porque el panel /admin guarda los cambios. **No sirve en hosting estático** (GitHub Pages, Netlify estático, etc.): ahí /admin no funciona.
 
 Opciones:
-- **Render** (render.com): crea un "Web Service", sube esta carpeta (por ejemplo a un repositorio de GitHub), comando de inicio `node server.js`. Agrega un **disco persistente** montado en la carpeta del proyecto (o al menos para `content.json`, `auth.json` y `uploads/`); sin disco, los cambios y fotos se borran en cada reinicio.
+- **Render** (render.com): crea un "Web Service", sube esta carpeta (por ejemplo a un repositorio de GitHub), comando de inicio `node server.js`. Agrega un **disco persistente** montado en la carpeta del proyecto (o al menos para `content.json`, `auth.json` y `uploads/`); sin disco, los cambios y fotos se borran en cada reinicio. En el plan gratis no hay disco: la sección 9 guarda comentarios, cuentas de clientes y la lista de comprobantes en una rama de GitHub.
 - **Railway** (railway.app): nuevo proyecto desde la carpeta o GitHub, comando `node server.js`, y agrega un **Volume** para guardar los datos.
 - **VPS** (DigitalOcean, Contabo, etc.): copia la carpeta, instala Node y ejecútalo con `pm2 start server.js` o un servicio systemd. Ponlo detrás de Nginx o Caddy con **HTTPS**.
 
@@ -86,3 +86,15 @@ Las direcciones de retorno se arman con `PUBLIC_URL` (sin barra al final). Si no
 3. Callback / Redirect URI: `https://mundorex.onrender.com/auth/x/callback`.
 4. Permisos: `users.read` y `tweet.read`.
 5. En Render: `X_CLIENT_ID`, `X_CLIENT_SECRET` y `OWNER_X_USERNAME` (tu usuario de X, sin @).
+
+## 9. Guardar comentarios y cuentas en Render gratis
+En el plan gratis de Render el disco se borra en cada deploy, reinicio o apagado. Sin una variable extra, `comments.json`, `customers.json` y `comprobantes.json` se pierden. Con `GITHUB_TOKEN`, el servidor los copia a la rama `datos` del repositorio (no a `main`, para que Render no vuelva a desplegar en cada comentario). Al arrancar los vuelve a bajar. Las fotos de los comprobantes no se guardan: solo la lista (producto, fecha, total y enlace).
+
+Este repositorio es público. La rama `datos` también lo será y ahí quedan los comentarios, los hashes de las contraseñas de los clientes y la lista de comprobantes. Haz el repositorio privado antes de activar el token, o usa otro repositorio privado en `GITHUB_REPO`.
+
+1. En GitHub: **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
+2. En **Repository access** elige solo este repositorio.
+3. En **Permissions → Repository permissions** pon **Contents** en **Read and write**. No hace falta ningún otro permiso.
+4. En Render: el servicio → **Environment** → agrega `GITHUB_TOKEN` con ese token y guarda. Render reinicia solo.
+5. Opcional: `GITHUB_REPO` (si no lo pones, es `mubdorex0-coder/Mundorex-`) y `GITHUB_DATA_BRANCH` (si no lo pones, es `datos`). No uses `main`.
+6. En el panel, la pestaña **Comentarios** dice **Guardado permanente: activado**. Sin el token dice **desactivado** y todo sigue igual que antes, solo en el disco del servidor.
